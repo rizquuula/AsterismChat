@@ -185,13 +185,16 @@ Inspired by Apple's elegant dark theme design language:
          ▼
    ┌─────────────────────────────┐
    │  POST to agent endpoint     │
-   │  - Full message history     │
-   │  - User's latest message    │
-   │  - Session ID               │
+   │  - Current message          │
+   │  - Session ID (for agent's  │
+   │    internal session state)  │
    └─────────────────────────────┘
          │
          ▼
    ┌─────────────────────────────┐
+   │  Agent handles session      │
+   │  internally (context,       │
+   │  history, etc.)             │
    │  Agent decides to respond   │
    │  (guard logic on agent side)│
    └─────────────────────────────┘
@@ -205,7 +208,7 @@ Inspired by Apple's elegant dark theme design language:
    - Display responses as they arrive
    - Show "waiting" indicator if some agents haven't responded
    - No timeout - let agents respond at their own pace
-   - Agent-to-agent responses: When Agent A responds, that response is broadcast to all agents (including Agent B) in the next request, enabling inter-agent conversation
+   - Agent-to-agent conversation: Each agent maintains its own session. When Agent A responds, it goes to all agents in the next broadcast. Each agent decides internally whether to respond based on the message.
 
 4. **Message History**
    - Persist chat in local storage
@@ -216,7 +219,7 @@ Inspired by Apple's elegant dark theme design language:
 
 #### Request Format (to each agent)
 
-The key improvement: **Each request includes the FULL conversation history** so agents can understand context and respond to each other.
+Each agent maintains its **own internal session state**. We only send the current message with the session_id - the agent handles context internally.
 
 ```json
 {
@@ -225,15 +228,7 @@ The key improvement: **Each request includes the FULL conversation history** so 
     {
       "session_id": "session-uuid",
       "role": "user",
-      "content": "Hello, I have two agents here. What's 2+2?"
-    },
-    {
-      "role": "assistant",
-      "content": "Hello! 2+2 equals 4."
-    },
-    {
-      "role": "user", 
-      "content": "Can you explain to the other agent why?"
+      "content": "hello"
     }
   ]
 }
@@ -243,16 +238,16 @@ The key improvement: **Each request includes the FULL conversation history** so 
 ```typescript
 interface ApiMessage {
   session_id: string;
-  role: 'user' | 'assistant';
+  role: 'user';
   content: string;
 }
 ```
 
 **Construction rules:**
-1. Start with oldest message first
-2. For user messages: use `role: "user"` with the content
-3. For agent responses: use `role: "assistant"` with the response content
-4. Always include `session_id` in user messages only
+1. Send only the current user message
+2. Always include `session_id` so agent can track its own session
+3. `role` is always `"user"` for outgoing messages
+4. Agent's response is added to our local chat display, but not sent back to other agents
 
 #### Headers
 ```
@@ -469,7 +464,7 @@ If agents are on different domains and CORS is an issue, a simple proxy can be a
 - [ ] Can delete agent with confirmation
 - [ ] Can send message to all agents (broadcast)
 - [ ] Can send message to selected agents only
-- [ ] Each agent receives full conversation history
+- [ ] Each agent receives current message with session_id (agent handles its own session)
 - [ ] Agent responses display with correct sender name
 - [ ] Chat history persists after page refresh
 - [ ] Error states display clearly (network, auth, timeout)

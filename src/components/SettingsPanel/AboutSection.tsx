@@ -18,7 +18,7 @@ export function AboutSection({ className = '' }: AboutSectionProps) {
             </svg>
           </div>
           <div>
-            <h4 className="text-[15px] font-semibold text-white">AsterismChat</h4>
+            <h4 className="text-[15px] font-semibold text-white">Asterism Chat</h4>
             <p className="text-[12px] text-[#8E8E93]">Version 1.0.0</p>
           </div>
         </div>

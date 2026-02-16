@@ -9,10 +9,10 @@ interface ExportSettingsProps {
   className?: string;
 }
 
-const exportFormats: { value: ExportFormat; label: string; icon: string; description: string }[] = [
-  { value: 'json', label: 'JSON', icon: '📋', description: 'Full data with metadata' },
-  { value: 'markdown', label: 'Markdown', icon: '📝', description: 'Human-readable format' },
-  { value: 'text', label: 'Plain Text', icon: '📄', description: 'Simple dialogue' },
+const exportFormats: { value: ExportFormat; label: string; icon: React.ReactNode; description: string }[] = [
+  { value: 'json', label: 'JSON', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>, description: 'Full data with metadata' },
+  { value: 'markdown', label: 'Markdown', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" /></svg>, description: 'Human-readable format' },
+  { value: 'text', label: 'Plain Text', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5z" clipRule="evenodd" /></svg>, description: 'Simple dialogue' },
 ];
 
 export function ExportSettings({ state, className = '' }: ExportSettingsProps) {

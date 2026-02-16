@@ -59,7 +59,7 @@ function getAgentName(agents: Agent[], agentId: string): string {
 // Export to JSON
 export function exportToJSON(state: ChatState, options: ExportOptions): string {
   const filteredMessages = filterMessages(state.messages, options);
-  
+
   const exportData = {
     ...(options.includeMetadata && {
       exportedAt: new Date().toISOString(),
@@ -90,7 +90,7 @@ export function exportToJSON(state: ChatState, options: ExportOptions): string {
 // Export to Markdown
 export function exportToMarkdown(state: ChatState, options: ExportOptions): string {
   const filteredMessages = filterMessages(state.messages, options);
-  
+
   // Group messages by date
   const messagesByDate = new Map<string, Message[]>();
   filteredMessages.forEach(msg => {
@@ -101,8 +101,8 @@ export function exportToMarkdown(state: ChatState, options: ExportOptions): stri
     messagesByDate.get(dateKey)!.push(msg);
   });
 
-  let markdown = '# AsterismChat Export\n\n';
-  
+  let markdown = '# Asterism Chat Export\n\n';
+
   if (options.includeMetadata) {
     markdown += `*Exported on ${new Date().toLocaleDateString()}*\n\n`;
     markdown += `---\n\n`;
@@ -111,13 +111,13 @@ export function exportToMarkdown(state: ChatState, options: ExportOptions): stri
   // Write each date group
   messagesByDate.forEach((messages, date) => {
     markdown += `## ${date}\n\n`;
-    
+
     messages.forEach(msg => {
       const senderName = getAgentName(state.agents, msg.sender);
       const time = formatTimestamp(msg.timestamp);
       const isUser = msg.sender === 'user';
       const isSystem = msg.sender === 'system';
-      
+
       if (isSystem) {
         markdown += `> *System: ${msg.content}*\n\n`;
       } else {
@@ -144,10 +144,10 @@ export function exportToMarkdown(state: ChatState, options: ExportOptions): stri
 // Export to Plain Text
 export function exportToText(state: ChatState, options: ExportOptions): string {
   const filteredMessages = filterMessages(state.messages, options);
-  
-  let text = 'AsterismChat Export\n';
+
+  let text = 'Asterism Chat Export\n';
   text += '='.repeat(50) + '\n\n';
-  
+
   if (options.includeMetadata) {
     text += "Exported: " + new Date().toLocaleString() + "\n";
     text += "Session: " + state.sessionId + "\n";
@@ -159,7 +159,7 @@ export function exportToText(state: ChatState, options: ExportOptions): string {
     const senderName = getAgentName(state.agents, msg.sender);
     const time = formatTimestamp(msg.timestamp);
     const date = formatDate(msg.timestamp);
-    
+
     if (msg.sender === 'system') {
       text += `[${date} ${time}] System: ${msg.content}\n\n`;
     } else {

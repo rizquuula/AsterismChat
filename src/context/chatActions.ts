@@ -1,4 +1,4 @@
-import { Agent, Group, Message } from '../types';
+import { Agent, Group, Message, defaultAgentSettings, AgentSettings } from '../types';
 import { generateUUID } from '../hooks/useLocalStorage';
 import { Dispatch } from 'react';
 import { ChatAction } from '../types';
@@ -9,6 +9,7 @@ export function createAddAgent(dispatch: Dispatch<ChatAction>) {
       ...agentData,
       id: generateUUID(),
       createdAt: Date.now(),
+      settings: agentData.settings || defaultAgentSettings,
     };
     dispatch({ type: 'ADD_AGENT', payload: agent });
   };

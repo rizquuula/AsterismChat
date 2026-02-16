@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Agent } from '../../types';
+import { Agent, defaultAgentSettings } from '../../types';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
@@ -75,6 +75,7 @@ export function AgentModal({ isOpen, onClose, agent, onSave }: AgentModalProps) 
       model: model.trim(),
       apiKey: apiKey.trim(),
       lastResponseAt: agent?.lastResponseAt,
+      settings: agent?.settings || defaultAgentSettings,
     });
     onClose();
   };

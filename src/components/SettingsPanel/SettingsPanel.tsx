@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useChat } from '../../context/ChatContext';
+import { useTheme, Theme } from '../../context/ThemeContext';
+import { exportChat, downloadExport, getMimeType, getFileExtension, ExportOptions } from '../../utils/export';
+
+type ExportFormat = 'json' | 'markdown' | 'text';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -8,6 +12,9 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { state, clearMessages } = useChat();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
+  const [includeMetadata, setIncludeMetadata] = useState(true);
 
   const handleClearHistory = () => {
     if (window.confirm('Are you sure you want to clear all chat history? This action cannot be undone.')) {
@@ -15,17 +22,29 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   };
 
+  const themeOptions: { value: Theme; label: string; icon: string }[] = [
+    { value: 'dark', label: 'Dark', icon: '🌙' },
+    { value: 'light', label: 'Light', icon: '☀️' },
+    { value: 'system', label: 'System', icon: '💻' },
+  ];
+
+  const exportFormats: { value: ExportFormat; label: string; icon: string; description: string }[] = [
+    { value: 'json', label: 'JSON', icon: '📋', description: 'Full data with metadata' },
+    { value: 'markdown', label: 'Markdown', icon: '📝', description: 'Human-readable format' },
+    { value: 'text', label: 'Plain Text', icon: '📄', description: 'Simple dialogue' },
+  ];
+
   const handleExport = () => {
-    const data = JSON.stringify(state, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `asterism-chat-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const options: ExportOptions = {
+      format: exportFormat,
+      includeMetadata,
+    };
+    
+    const content = exportChat(state, options);
+    const filename = `asterism-chat-${new Date().toISOString().split('T')[0]}.${getFileExtension(exportFormat)}`;
+    const mimeType = getMimeType(exportFormat);
+    
+    downloadExport(content, filename, mimeType);
   };
 
   if (!isOpen) return null;
@@ -55,6 +74,32 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
         {/* Settings Content */}
         <div className="p-4 space-y-4">
+          {/* Theme Toggle */}
+          <div className="p-4 bg-[#2C2C2E] rounded-xl">
+            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">Appearance</h3>
+            <div className="flex gap-2">
+              {themeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setTheme(option.value)}
+                  className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 ${
+                    theme === option.value
+                      ? 'bg-[#0A84FF] text-white'
+                      : 'bg-[#1C1C1E] text-[#8E8E93] hover:bg-[#3C3C3E]'
+                  }`}
+                >
+                  <span className="text-xl">{option.icon}</span>
+                  <span className="text-[13px] font-medium">{option.label}</span>
+                </button>
+              ))}
+            </div>
+            {theme === 'system' && (
+              <p className="text-[12px] text-[#8E8E93] mt-3 text-center">
+                Currently using {resolvedTheme} mode based on system preference
+              </p>
+            )}
+          </div>
+
           {/* Chat Statistics */}
           <div className="p-4 bg-[#2C2C2E] rounded-xl">
             <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">Chat Statistics</h3>
@@ -70,21 +115,56 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="space-y-2">
-            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide px-1">Actions</h3>
+          {/* Export Section */}
+          <div className="space-y-3">
+            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide px-1">Export Chat</h3>
             
+            {/* Format Selector */}
+            <div className="grid grid-cols-3 gap-2">
+              {exportFormats.map((format) => (
+                <button
+                  key={format.value}
+                  onClick={() => setExportFormat(format.value)}
+                  className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${
+                    exportFormat === format.value
+                      ? 'bg-[#0A84FF] text-white'
+                      : 'bg-[#2C2C2E] text-[#8E8E93] hover:bg-[#3C3C3E]'
+                  }`}
+                >
+                  <span className="text-xl">{format.icon}</span>
+                  <span className="text-[12px] font-medium">{format.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Include Metadata Toggle */}
+            <label className="flex items-center gap-3 px-3 py-2 bg-[#2C2C2E] rounded-xl cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeMetadata}
+                onChange={(e) => setIncludeMetadata(e.target.checked)}
+                className="w-4 h-4 rounded border-[#38383A] text-[#0A84FF] focus:ring-[#0A84FF] bg-[#1C1C1E]"
+              />
+              <span className="text-[14px] text-[#8E8E93]">Include metadata</span>
+            </label>
+
+            {/* Export Button */}
             <button
               onClick={handleExport}
               disabled={state.messages.length === 0}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-[#2C2C2E] hover:bg-[#3C3C3E] rounded-xl text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#0A84FF] hover:bg-[#409CFF] rounded-xl text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#8E8E93]" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-              <span className="text-[15px]">Export Chat as JSON</span>
+              <span className="text-[15px]">Export as {exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'text' ? 'Text' : 'JSON'}</span>
             </button>
+          </div>
 
+          {/* Actions */}
+          <div className="space-y-2 pt-4 border-t border-[#38383A]">
+            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide px-1">Actions</h3>
+            
             <button
               onClick={handleClearHistory}
               disabled={state.messages.length === 0}

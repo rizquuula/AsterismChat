@@ -1,3 +1,11 @@
+export interface AgentSettings {
+  timeout: number;           // milliseconds (default: 30000)
+  maxRetries: number;        // default: 3
+  retryDelay: number;        // milliseconds (default: 1000)
+  enabled: boolean;          // default: true
+  autoResponse: boolean;     // default: true
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -6,7 +14,17 @@ export interface Agent {
   apiKey: string;
   createdAt: number;
   lastResponseAt?: number;
+  settings: AgentSettings;
 }
+
+// Default settings for new agents
+export const defaultAgentSettings: AgentSettings = {
+  timeout: 30000,
+  maxRetries: 3,
+  retryDelay: 1000,
+  enabled: true,
+  autoResponse: true,
+};
 
 export interface Group {
   id: string;

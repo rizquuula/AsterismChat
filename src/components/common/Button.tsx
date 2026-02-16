@@ -13,12 +13,12 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-black focus:ring-offset-white';
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)]';
   
   const variantStyles = {
-    primary: 'dark:bg-blue-500 bg-blue-500 text-white hover:dark:bg-blue-400 hover:bg-blue-600 focus:ring-blue-500 disabled:dark:bg-blue-500/50 disabled:bg-blue-500/50',
-    secondary: 'dark:bg-gray-800 bg-gray-100 dark:text-white text-gray-900 hover:dark:bg-gray-700 hover:bg-gray-200 focus:ring-gray-500 disabled:dark:bg-gray-800/50 disabled:bg-gray-100/50',
-    danger: 'dark:bg-red-500 bg-red-500 text-white hover:dark:bg-red-400 hover:bg-red-600 focus:ring-red-500 disabled:dark:bg-red-500/50 disabled:bg-red-500/50',
+    primary: 'bg-[var(--accent-primary)] text-white hover:opacity-90 focus:ring-[var(--accent-primary)] disabled:opacity-50',
+    secondary: 'bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] focus:ring-[var(--border)] disabled:opacity-50',
+    danger: 'bg-[var(--accent-error)] text-white hover:opacity-90 focus:ring-[var(--accent-error)] disabled:opacity-50',
   };
 
   const sizeStyles = {

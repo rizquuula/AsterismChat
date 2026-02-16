@@ -13,27 +13,27 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
       components={{
         // Headings
         h1: ({ children }) => (
-          <h1 className="text-xl font-bold dark:text-white text-gray-900 mb-2 mt-3">{children}</h1>
+          <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2 mt-3">{children}</h1>
         ),
         h2: ({ children }) => (
-          <h2 className="text-lg font-semibold dark:text-white text-gray-900 mb-2 mt-3">{children}</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2 mt-3">{children}</h2>
         ),
         h3: ({ children }) => (
-          <h3 className="text-base font-semibold dark:text-white text-gray-900 mb-1 mt-2">{children}</h3>
+          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1 mt-2">{children}</h3>
         ),
         h4: ({ children }) => (
-          <h4 className="text-sm font-semibold dark:text-white text-gray-900 mb-1 mt-2">{children}</h4>
+          <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-1 mt-2">{children}</h4>
         ),
         h5: ({ children }) => (
-          <h5 className="text-sm font-medium dark:text-white text-gray-900 mb-1 mt-1">{children}</h5>
+          <h5 className="text-sm font-medium text-[var(--text-primary)] mb-1 mt-1">{children}</h5>
         ),
         h6: ({ children }) => (
-          <h6 className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1 mt-1">{children}</h6>
+          <h6 className="text-sm font-medium text-[var(--text-secondary)] mb-1 mt-1">{children}</h6>
         ),
 
         // Paragraphs
         p: ({ children }) => (
-          <p className="text-[15px] dark:text-white text-gray-900 mb-2 last:mb-0">{children}</p>
+          <p className="text-[15px] text-[var(--text-primary)] mb-2 last:mb-0">{children}</p>
         ),
 
         // Links
@@ -42,7 +42,7 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="dark:text-blue-400 text-blue-600 hover:underline"
+            className="text-[var(--accent-primary)] hover:underline"
           >
             {children}
           </a>
@@ -50,10 +50,10 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
 
         // Bold and Italic
         strong: ({ children }) => (
-          <strong className="font-semibold dark:text-white text-gray-900">{children}</strong>
+          <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>
         ),
         em: ({ children }) => (
-          <em className="italic dark:text-gray-300 text-gray-700">{children}</em>
+          <em className="italic text-[var(--text-secondary)]">{children}</em>
         ),
 
         // Lists
@@ -64,12 +64,12 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
           <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>
         ),
         li: ({ children }) => (
-          <li className="text-[15px] dark:text-white text-gray-900">{children}</li>
+          <li className="text-[15px] text-[var(--text-primary)]">{children}</li>
         ),
 
         // Blockquotes
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 dark:border-blue-500 border-blue-500 pl-3 my-2 dark:text-gray-400 text-gray-600 italic">
+          <blockquote className="border-l-4 border-[var(--accent-primary)] pl-3 my-2 text-[var(--text-secondary)] italic">
             {children}
           </blockquote>
         ),
@@ -82,7 +82,7 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
           if (isInline) {
             return (
               <code
-                className="dark:bg-gray-800 bg-gray-200 dark:text-pink-400 text-pink-600 px-1.5 py-0.5 rounded text-sm font-mono"
+                className="bg-[var(--bg-tertiary)] text-[var(--accent-error)] px-1.5 py-0.5 rounded text-sm font-mono"
                 {...props}
               >
                 {children}
@@ -112,32 +112,32 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
         ),
 
         // Horizontal rule
-        hr: () => <hr className="dark:border-gray-700 border-gray-200 my-4" />,
+        hr: () => <hr className="border-[var(--border)] my-4" />,
 
         // Tables
         table: ({ children }) => (
           <div className="overflow-x-auto my-2">
-            <table className="min-w-full border dark:border-gray-700 border-gray-200 rounded-lg overflow-hidden">
+            <table className="min-w-full border border-[var(--border)] rounded-lg overflow-hidden">
               {children}
             </table>
           </div>
         ),
         thead: ({ children }) => (
-          <thead className="dark:bg-gray-800 bg-gray-100">{children}</thead>
+          <thead className="bg-[var(--bg-secondary)]">{children}</thead>
         ),
         tbody: ({ children }) => (
           <tbody>{children}</tbody>
         ),
         tr: ({ children }) => (
-          <tr className="border-b dark:border-gray-700 border-gray-200 last:border-0">{children}</tr>
+          <tr className="border-b border-[var(--border)] last:border-0">{children}</tr>
         ),
         th: ({ children }) => (
-          <th className="px-3 py-2 text-left text-sm font-semibold dark:text-white text-gray-900">
+          <th className="px-3 py-2 text-left text-sm font-semibold text-[var(--text-primary)]">
             {children}
           </th>
         ),
         td: ({ children }) => (
-          <td className="px-3 py-2 text-sm dark:text-gray-300 text-gray-700">{children}</td>
+          <td className="px-3 py-2 text-sm text-[var(--text-secondary)]">{children}</td>
         ),
 
         // Images
@@ -152,7 +152,7 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
 
         // Strikethrough
         del: ({ children }) => (
-          <del className="dark:text-gray-500 text-gray-400 line-through">{children}</del>
+          <del className="text-[var(--text-tertiary)] line-through">{children}</del>
         ),
       }}
     >

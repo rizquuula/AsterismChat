@@ -15,8 +15,8 @@ export function ThemeSettings({ className = '' }: ThemeSettingsProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
 
   return (
-    <div className={`p-4 dark:bg-gray-800 bg-gray-100 rounded-xl ${className}`}>
-      <h3 className="text-[13px] font-semibold dark:text-gray-400 text-gray-600 uppercase tracking-wide mb-3">
+    <div className={`p-4 bg-[var(--bg-secondary)] rounded-xl ${className}`}>
+      <h3 className="text-[13px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">
         Appearance
       </h3>
       <div className="flex gap-2">
@@ -26,8 +26,8 @@ export function ThemeSettings({ className = '' }: ThemeSettingsProps) {
             onClick={() => setTheme(option.value)}
             className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 ${
               theme === option.value
-                ? 'dark:bg-blue-500 bg-blue-500 text-white'
-                : 'dark:bg-gray-900 bg-white dark:text-gray-400 text-gray-600 hover:dark:bg-gray-700 hover:bg-gray-200'
+                ? 'bg-[var(--accent-primary)] text-white'
+                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             <span className="text-xl">{option.icon}</span>
@@ -36,7 +36,7 @@ export function ThemeSettings({ className = '' }: ThemeSettingsProps) {
         ))}
       </div>
       {theme === 'system' && (
-        <p className="text-[12px] dark:text-gray-400 text-gray-600 mt-3 text-center">
+        <p className="text-[12px] text-[var(--text-secondary)] mt-3 text-center">
           Currently using {resolvedTheme} mode based on system preference
         </p>
       )}

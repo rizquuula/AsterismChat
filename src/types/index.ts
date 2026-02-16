@@ -8,11 +8,19 @@ export interface Agent {
   lastResponseAt?: number;
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  agentIds: string[];
+  sessionId: string;
+  createdAt: number;
+}
+
 export interface Message {
   id: string;
   sessionId: string;
   content: string;
-  sender: 'user' | Agent['id'];
+  sender: 'user' | 'system' | Agent['id'];
   senderName: string;
   timestamp: number;
   status: 'sending' | 'sent' | 'error';
@@ -22,7 +30,9 @@ export interface Message {
 
 export interface ChatState {
   agents: Agent[];
+  groups: Group[];
   messages: Message[];
+  activeGroupId: string | null;
   sessionId: string;
 }
 
@@ -61,6 +71,10 @@ export type ChatAction =
   | { type: 'ADD_AGENT'; payload: Agent }
   | { type: 'UPDATE_AGENT'; payload: Agent }
   | { type: 'DELETE_AGENT'; payload: string }
+  | { type: 'ADD_GROUP'; payload: Group }
+  | { type: 'UPDATE_GROUP'; payload: Group }
+  | { type: 'DELETE_GROUP'; payload: string }
+  | { type: 'SET_ACTIVE_GROUP'; payload: string | null }
   | { type: 'ADD_MESSAGE'; payload: Message }
   | { type: 'UPDATE_MESSAGE'; payload: { id: string; updates: Partial<Message> } }
   | { type: 'CLEAR_MESSAGES' }

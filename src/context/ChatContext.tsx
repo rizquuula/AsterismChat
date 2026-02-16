@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { ChatState, ChatAction, Agent, Message } from '../types';
+import { ChatState, ChatAction, Agent, Message, Group } from '../types';
 import { useLocalStorage, generateUUID } from '../hooks/useLocalStorage';
 
 const STORAGE_KEY = 'asterism-chat-state';
 
 const initialState: ChatState = {
   agents: [],
+  groups: [],
   messages: [],
+  activeGroupId: null,
   sessionId: generateUUID(),
 };
 
@@ -28,6 +30,37 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         agents: state.agents.filter((agent) => agent.id !== action.payload),
+        // Also remove from groups
+        groups: state.groups.map(group => ({
+          ...group,
+          agentIds: group.agentIds.filter(id => id !== action.payload)
+        })),
+      };
+    case 'ADD_GROUP':
+      return {
+        ...state,
+        groups: [...state.groups, action.payload],
+      };
+    case 'UPDATE_GROUP':
+      return {
+        ...state,
+        groups: state.groups.map((group) =>
+          group.id === action.payload.id ? action.payload : group
+        ),
+      };
+    case 'DELETE_GROUP':
+      return {
+        ...state,
+        groups: state.groups.filter((group) => group.id !== action.payload),
+        activeGroupId: state.activeGroupId === action.payload ? null : state.activeGroupId,
+      };
+    case 'SET_ACTIVE_GROUP':
+      return {
+        ...state,
+        activeGroupId: action.payload,
+        sessionId: action.payload 
+          ? state.groups.find(g => g.id === action.payload)?.sessionId || generateUUID()
+          : generateUUID(),
       };
     case 'ADD_MESSAGE':
       return {
@@ -54,7 +87,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         sessionId: action.payload,
       };
     case 'LOAD_STATE':
-      return action.payload;
+      return {
+        ...action.payload,
+        // Ensure backward compatibility
+        activeGroupId: action.payload.activeGroupId || null,
+      };
     default:
       return state;
   }
@@ -66,10 +103,17 @@ interface ChatContextType {
   addAgent: (agent: Omit<Agent, 'id' | 'createdAt'>) => void;
   updateAgent: (agent: Agent) => void;
   deleteAgent: (id: string) => void;
+  addGroup: (name: string, agentIds: string[]) => Group;
+  updateGroup: (group: Group) => void;
+  deleteGroup: (id: string) => void;
+  setActiveGroup: (id: string | null) => void;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
   clearMessages: () => void;
-  sendMessage: (content: string, targetAgentIds: string[]) => Promise<void>;
+  sendMessage: (content: string) => Promise<void>;
+  createGroupForAgent: (agentId: string) => Group | null;
+  startNewSession: () => void;
+  getActiveGroupMessages: () => Message[];
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -104,6 +148,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DELETE_AGENT', payload: id });
   };
 
+  const addGroup = (name: string, agentIds: string[]): Group => {
+    const group: Group = {
+      id: generateUUID(),
+      name,
+      agentIds,
+      sessionId: generateUUID(),
+      createdAt: Date.now(),
+    };
+    dispatch({ type: 'ADD_GROUP', payload: group });
+    return group;
+  };
+
+  const updateGroup = (group: Group) => {
+    dispatch({ type: 'UPDATE_GROUP', payload: group });
+  };
+
+  const deleteGroup = (id: string) => {
+    dispatch({ type: 'DELETE_GROUP', payload: id });
+  };
+
+  const setActiveGroup = (id: string | null) => {
+    dispatch({ type: 'SET_ACTIVE_GROUP', payload: id });
+  };
+
   const addMessage = (messageData: Omit<Message, 'id' | 'timestamp'>) => {
     const message: Message = {
       ...messageData,
@@ -121,32 +189,102 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CLEAR_MESSAGES' });
   };
 
-  const sendMessage = async (content: string, targetAgentIds: string[]) => {
-    const targets = targetAgentIds.length === 0 
-      ? state.agents.map(a => a.id) 
-      : targetAgentIds;
-
-    // Add user message
-    const userMessageId = generateUUID();
+  const startNewSession = () => {
+    const newSessionId = generateUUID();
+    
+    // Add system notification message
     addMessage({
       sessionId: state.sessionId,
+      content: `New chat session initialized with id "${newSessionId}"`,
+      sender: 'system',
+      senderName: 'System',
+      status: 'sent',
+    });
+    
+    dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
+    
+    // Update active group's session if there's an active group
+    if (state.activeGroupId) {
+      const group = state.groups.find(g => g.id === state.activeGroupId);
+      if (group) {
+        updateGroup({ ...group, sessionId: newSessionId });
+      }
+    }
+  };
+
+  const getActiveGroupMessages = (): Message[] => {
+    if (!state.activeGroupId) return [];
+    const group = state.groups.find(g => g.id === state.activeGroupId);
+    if (!group) return [];
+    return state.messages.filter(m => m.sessionId === group.sessionId);
+  };
+
+  const createGroupForAgent = (agentId: string): Group | null => {
+    const agent = state.agents.find(a => a.id === agentId);
+    if (!agent) return null;
+
+    // Check if group already exists for this agent
+    const existingGroup = state.groups.find(g => 
+      g.agentIds.length === 1 && g.agentIds.includes(agentId)
+    );
+    
+    if (existingGroup) {
+      setActiveGroup(existingGroup.id);
+      return existingGroup;
+    }
+
+    // Create new group for this agent
+    const groupName = `${agent.name}'s Chat`;
+    const group = addGroup(groupName, [agentId]);
+    setActiveGroup(group.id);
+    return group;
+  };
+
+  const sendMessage = async (content: string) => {
+    // Handle "/new" command
+    if (content.trim().toLowerCase() === '/new') {
+      startNewSession();
+      return;
+    }
+
+    // Get target agents from active group or all agents
+    let targetAgentIds: string[];
+    let sessionId: string;
+
+    if (state.activeGroupId) {
+      const group = state.groups.find(g => g.id === state.activeGroupId);
+      if (!group) {
+        targetAgentIds = state.agents.map(a => a.id);
+        sessionId = state.sessionId;
+      } else {
+        targetAgentIds = group.agentIds;
+        sessionId = group.sessionId;
+      }
+    } else {
+      targetAgentIds = state.agents.map(a => a.id);
+      sessionId = state.sessionId;
+    }
+
+    if (targetAgentIds.length === 0) return;
+
+    // Add user message
+    addMessage({
+      sessionId,
       content,
       sender: 'user',
       senderName: 'You',
       status: 'sent',
-      targets,
+      targets: targetAgentIds,
     });
 
     // Send to each selected agent
-    for (const agentId of targets) {
+    for (const agentId of targetAgentIds) {
       const agent = state.agents.find(a => a.id === agentId);
       if (!agent) continue;
 
-      const pendingMessageId = generateUUID();
-      
       // Add placeholder for agent response
       addMessage({
-        sessionId: state.sessionId,
+        sessionId,
         content: '',
         sender: agentId,
         senderName: agent.name,
@@ -165,7 +303,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             model: agent.model,
             messages: [
               {
-                session_id: state.sessionId,
+                session_id: sessionId,
                 role: 'user',
                 content,
               },
@@ -180,17 +318,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         const agentContent = data.choices?.[0]?.message?.content || 'No response';
 
-        // Update the message with the response
-        const messages = state.messages;
-        const msgIndex = messages.findIndex(m => m.sender === agentId && m.status === 'sending');
+        // Get current messages to find the pending one
+        const currentMessages = state.messages;
+        const msgIndex = currentMessages.findIndex(m => 
+          m.sender === agentId && m.status === 'sending' && m.sessionId === sessionId
+        );
+        
         if (msgIndex !== -1) {
-          updateMessage(messages[msgIndex].id, {
+          updateMessage(currentMessages[msgIndex].id, {
             content: agentContent,
             status: 'sent',
           });
         } else {
           addMessage({
-            sessionId: state.sessionId,
+            sessionId,
             content: agentContent,
             sender: agentId,
             senderName: agent.name,
@@ -204,17 +345,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
-        const messages = state.messages;
-        const msgIndex = messages.findIndex(m => m.sender === agentId && m.status === 'sending');
+        const currentMessages = state.messages;
+        const msgIndex = currentMessages.findIndex(m => 
+          m.sender === agentId && m.status === 'sending' && m.sessionId === sessionId
+        );
+        
         if (msgIndex !== -1) {
-          updateMessage(messages[msgIndex].id, {
+          updateMessage(currentMessages[msgIndex].id, {
             content: '',
             status: 'error',
             error: errorMessage,
           });
         } else {
           addMessage({
-            sessionId: state.sessionId,
+            sessionId,
             content: '',
             sender: agentId,
             senderName: agent.name,
@@ -235,10 +379,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         addAgent,
         updateAgent,
         deleteAgent,
+        addGroup,
+        updateGroup,
+        deleteGroup,
+        setActiveGroup,
         addMessage,
         updateMessage,
         clearMessages,
         sendMessage,
+        createGroupForAgent,
+        startNewSession,
+        getActiveGroupMessages,
       }}
     >
       {children}

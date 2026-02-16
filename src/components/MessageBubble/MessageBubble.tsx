@@ -8,6 +8,18 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.sender === 'user';
+  const isSystem = message.sender === 'system';
+
+  // System message (from /new command)
+  if (isSystem) {
+    return (
+      <div className="flex justify-center mb-4">
+        <div className="px-4 py-2 bg-[#2C2C2E] rounded-full border border-[#38383A]">
+          <p className="text-[13px] text-[#8E8E93] whitespace-pre-wrap">{message.content}</p>
+        </div>
+      </div>
+    );
+  }
 
   const formatTimestamp = (timestamp: number) => {
     const diff = Date.now() - timestamp;

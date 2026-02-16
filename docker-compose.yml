@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: asterism_chat_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: asterismchat
+      POSTGRES_PASSWORD: asterismchat_password
+      POSTGRES_DB: asterism_chat_db
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asterismchat -d asterism_chat_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local

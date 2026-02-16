@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id            String   @id @default(uuid())
+  name          String
+  endpoint      String
+  model         String
+  apiKey        String   @map("api_key")
+  createdAt     BigInt   @map("created_at")
+  lastResponseAt BigInt? @map("last_response_at")
+  settings      Json
+
+  groups        GroupAgent[]
+
+  @@map("agents")
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  sessionId String   @map("session_id")
+  createdAt BigInt   @map("created_at")
+
+  agents    GroupAgent[]
+
+  @@map("groups")
+}
+
+model GroupAgent {
+  groupId String @map("group_id")
+  agentId String @map("agent_id")
+
+  group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  agent    Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, agentId])
+  @@map("group_agents")
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  sessionId  String   @map("session_id")
+  content    String
+  sender     String
+  senderName String   @map("sender_name")
+  timestamp  BigInt
+  status     String
+  targets    Json?
+  error      String?
+
+  @@map("messages")
+}
+
+model Session {
+  id            String   @id @default(uuid())
+  activeGroupId String?  @map("active_group_id")
+  createdAt     BigInt   @map("created_at")
+
+  @@map("sessions")
+}

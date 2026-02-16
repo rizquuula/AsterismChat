@@ -50,11 +50,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     
-    // Remove both classes first
-    root.classList.remove('dark', 'light');
-    
-    // Add the resolved theme class
-    root.classList.add(resolvedTheme);
+    // Only toggle the 'dark' class - don't add 'light' class
+    // Tailwind's dark: modifier activates when 'dark' class is present
+    // When dark class is absent, light styles are used by default
+    if (resolvedTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
 
     // Set CSS variables based on theme
     if (resolvedTheme === 'dark') {

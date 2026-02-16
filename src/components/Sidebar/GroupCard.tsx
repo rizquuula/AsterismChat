@@ -24,7 +24,7 @@ export function GroupCard({ group, agents, isActive, onClick, onDelete }: GroupC
     >
       <div className="flex items-center gap-3">
         {/* Group Avatar - Stack of avatars */}
-        <div className="relative">
+        <div className="relative shrink-0">
           {groupAgents.length === 1 ? (
             <Avatar name={groupAgents[0].name} size="md" />
           ) : (
@@ -41,9 +41,9 @@ export function GroupCard({ group, agents, isActive, onClick, onDelete }: GroupC
               )}
             </div>
           )}
-          {/* Active indicator */}
+          {/* Active indicator - positioned on the right side of the avatar */}
           {isActive && (
-            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#30D158] rounded-full border-2 border-[#1C1C1E]" />
+            <div className="absolute top-0 right-0 w-3 h-3 bg-[#30D158] rounded-full border-2 border-[#1C1C1E]" />
           )}
         </div>
         

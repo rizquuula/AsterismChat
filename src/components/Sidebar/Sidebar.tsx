@@ -62,7 +62,7 @@ export function Sidebar({ onAddAgent, onEditAgent, onDeleteAgent }: SidebarProps
   const groupToDelete = groups.find(g => g.id === deletingGroupId);
 
   return (
-    <aside className="fixed left-0 top-14 bottom-[60px] w-[280px] bg-[#000000] border-r border-[#38383A] flex flex-col z-30">
+    <aside className="fixed left-0 top-14 bottom-0 w-[280px] bg-[#000000] border-r border-[#38383A] flex flex-col z-30">
       {/* Agents Section */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 border-b border-[#38383A]">

@@ -20,7 +20,7 @@ export function ChatArea() {
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
   return (
-    <main className="fixed left-[280px] top-14 right-0 bottom-[60px] bg-[#000000] overflow-y-auto">
+    <main className="flex-1 bg-[#000000] overflow-y-auto">
       <div className="min-h-full p-4">
         {/* Active group indicator */}
         {activeGroupId && activeGroup && (

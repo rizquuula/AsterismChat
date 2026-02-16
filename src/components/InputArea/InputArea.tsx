@@ -38,7 +38,7 @@ export function InputArea() {
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
   return (
-    <footer className="fixed left-[280px] right-0 bottom-0 h-[60px] bg-[#1C1C1E] border-t border-[#38383A] z-30">
+    <footer className="shrink-0 h-[60px] bg-[#1C1C1E] border-t border-[#38383A]">
       <div className="h-full px-4 flex items-center gap-3">
         {/* Current target indicator */}
         <div className="flex items-center gap-2 px-3 py-2 bg-[#2C2C2E] rounded-lg text-[14px] text-white min-w-[120px]">

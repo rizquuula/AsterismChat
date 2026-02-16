@@ -67,8 +67,10 @@ function AppContent() {
         onDeleteAgent={handleDeleteAgent}
       />
       
-      <ChatArea />
-      <InputArea />
+      <div className="fixed left-[280px] top-14 right-0 bottom-0 flex flex-col">
+        <ChatArea />
+        <InputArea />
+      </div>
 
       <AgentModal
         isOpen={isAgentModalOpen}

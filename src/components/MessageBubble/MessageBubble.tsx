@@ -1,6 +1,7 @@
 import React from 'react';
 import { Message } from '../../types';
 import { Avatar } from '../common/Avatar';
+import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer';
 
 interface MessageBubbleProps {
   message: Message;
@@ -82,7 +83,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <span className="text-[11px] text-[#636366]">{formatTimestamp(message.timestamp)}</span>
         </div>
         <div className={`px-4 py-3 rounded-2xl ${isUser ? 'bg-[#0A84FF]/20' : 'bg-[#2C2C2E]'}`}>
-          <p className="text-[15px] text-white whitespace-pre-wrap break-words">{message.content}</p>
+          <MarkdownRenderer content={message.content} />
         </div>
       </div>
     </div>

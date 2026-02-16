@@ -18,7 +18,7 @@ export function DeleteGroupModal({ isOpen, onClose, group, onConfirm }: DeleteGr
       title="Delete Group"
     >
       <div className="space-y-4">
-        <p className="text-[15px] text-white">
+        <p className="text-[15px] dark:text-white text-gray-900">
           Are you sure you want to delete <span className="font-semibold">{group?.name}</span>?
         </p>
         <div className="flex gap-3">

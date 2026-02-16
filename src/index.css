@@ -33,10 +33,20 @@ html, body, #root {
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark mode body */
+.dark body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* Light mode body */
+body {
+  background-color: #ffffff;
+  color: #000000;
 }
 
 /* Custom scrollbar for dark theme */

@@ -23,14 +23,14 @@ export function AgentCard({ agent, onClick, onDelete, onChat }: AgentCardProps) 
 
   return (
     <div
-      className="group relative p-3 bg-[#1C1C1E] hover:bg-[#2C2C2E] rounded-xl cursor-pointer transition-all duration-150 hover:scale-[1.02]"
+      className="group relative p-3 dark:bg-gray-900 bg-gray-100 hover:dark:bg-gray-800 hover:bg-gray-200 rounded-xl cursor-pointer transition-all duration-150 hover:scale-[1.02]"
       onClick={onClick}
     >
       <div className="flex items-center gap-3">
         <Avatar name={agent.name} size="md" />
         <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-semibold text-white truncate">{agent.name}</h3>
-          <p className="text-[12px] text-[#8E8E93] truncate">{formatLastResponse(agent.lastResponseAt)}</p>
+          <h3 className="text-[14px] font-semibold dark:text-white text-gray-900 truncate">{agent.name}</h3>
+          <p className="text-[12px] dark:text-gray-400 text-gray-600 truncate">{formatLastResponse(agent.lastResponseAt)}</p>
         </div>
       </div>
       
@@ -41,7 +41,7 @@ export function AgentCard({ agent, onClick, onDelete, onChat }: AgentCardProps) 
             e.stopPropagation();
             onChat();
           }}
-          className="p-1.5 text-[#0A84FF] hover:bg-[#0A84FF]/10 rounded-lg"
+          className="p-1.5 dark:text-blue-400 text-blue-500 hover:bg-blue-500/10 rounded-lg"
           title="Start chat with this agent"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -53,7 +53,7 @@ export function AgentCard({ agent, onClick, onDelete, onChat }: AgentCardProps) 
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1.5 text-[#8E8E93] hover:text-[#FF453A] hover:bg-[#FF453A]/10 rounded-lg"
+          className="p-1.5 dark:text-gray-400 text-gray-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg"
           title="Delete agent"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

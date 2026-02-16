@@ -39,16 +39,16 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       
       {/* Modal */}
       <div
-        className="relative z-10 w-full max-w-md mx-4 bg-[#1C1C1E] border border-[#38383A] rounded-2xl shadow-2xl animate-fade-in-up"
+        className="relative z-10 w-full max-w-md mx-4 dark:bg-gray-900 bg-white border dark:border-gray-700 border-gray-200 rounded-2xl shadow-2xl animate-fade-in-up"
         style={{ animation: 'fadeInUp 200ms ease-out' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#38383A]">
-          <h2 className="text-[17px] font-semibold text-white">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 border-gray-200">
+          <h2 className="text-[17px] font-semibold dark:text-white text-gray-900">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 text-[#8E8E93] hover:text-white transition-colors rounded-lg hover:bg-[#2C2C2E]"
+            className="p-1 dark:text-gray-400 text-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg dark:hover:bg-gray-800 hover:bg-gray-100"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

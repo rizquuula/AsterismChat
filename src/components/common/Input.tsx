@@ -12,7 +12,7 @@ export function Input({ label, error, className = '', type = 'text', ...props }:
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-[#8E8E93] mb-1.5">
+        <label className="block text-sm font-medium dark:text-gray-400 text-gray-600 mb-1.5">
           {label}
         </label>
       )}
@@ -20,11 +20,11 @@ export function Input({ label, error, className = '', type = 'text', ...props }:
         <input
           type={isPassword && showPassword ? 'text' : type}
           className={`
-            w-full px-3 py-2.5 bg-[#1C1C1E] border border-[#38383A] rounded-lg
-            text-[15px] text-white placeholder-[#636366]
-            focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]
+            w-full px-3 py-2.5 dark:bg-gray-900 bg-gray-100 border dark:border-gray-700 border-gray-300 rounded-lg
+            text-[15px] dark:text-white text-gray-900 placeholder-gray-500
+            focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
             transition-colors duration-150
-            ${error ? 'border-[#FF453A] focus:border-[#FF453A] focus:ring-[#FF453A]' : ''}
+            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
             ${isPassword ? 'pr-10' : ''}
             ${className}
           `}
@@ -34,7 +34,7 @@ export function Input({ label, error, className = '', type = 'text', ...props }:
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8E93] hover:text-white transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 dark:text-gray-400 text-gray-600 hover:dark:text-white hover:text-gray-900 transition-colors"
           >
             {showPassword ? (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -51,7 +51,7 @@ export function Input({ label, error, className = '', type = 'text', ...props }:
         )}
       </div>
       {error && (
-        <p className="mt-1.5 text-sm text-[#FF453A]">{error}</p>
+        <p className="mt-1.5 text-sm dark:text-red-400 text-red-600">{error}</p>
       )}
     </div>
   );

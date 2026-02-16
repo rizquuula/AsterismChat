@@ -13,12 +13,12 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#000000]';
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-black focus:ring-offset-white';
   
   const variantStyles = {
-    primary: 'bg-[#0A84FF] text-white hover:bg-[#409CFF] focus:ring-[#0A84FF] disabled:bg-[#0A84FF]/50',
-    secondary: 'bg-[#2C2C2E] text-white hover:bg-[#3C3C3E] focus:ring-[#38383A] disabled:bg-[#2C2C2E]/50',
-    danger: 'bg-[#FF453A] text-white hover:bg-[#FF6B60] focus:ring-[#FF453A] disabled:bg-[#FF453A]/50',
+    primary: 'dark:bg-blue-500 bg-blue-500 text-white hover:dark:bg-blue-400 hover:bg-blue-600 focus:ring-blue-500 disabled:dark:bg-blue-500/50 disabled:bg-blue-500/50',
+    secondary: 'dark:bg-gray-800 bg-gray-100 dark:text-white text-gray-900 hover:dark:bg-gray-700 hover:bg-gray-200 focus:ring-gray-500 disabled:dark:bg-gray-800/50 disabled:bg-gray-100/50',
+    danger: 'dark:bg-red-500 bg-red-500 text-white hover:dark:bg-red-400 hover:bg-red-600 focus:ring-red-500 disabled:dark:bg-red-500/50 disabled:bg-red-500/50',
   };
 
   const sizeStyles = {

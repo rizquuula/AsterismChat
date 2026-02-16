@@ -56,7 +56,7 @@ export function GroupModal({ isOpen, onClose, agents, onCreateGroup }: GroupModa
         />
         
         <div>
-          <label className="block text-sm font-medium text-[#8E8E93] mb-1.5">
+          <label className="block text-sm font-medium dark:text-gray-400 text-gray-600 mb-1.5">
             Select Agents
           </label>
           <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -66,14 +66,14 @@ export function GroupModal({ isOpen, onClose, agents, onCreateGroup }: GroupModa
                 onClick={() => toggleAgentSelection(agent.id)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                   selectedAgentIds.includes(agent.id)
-                    ? 'bg-[#0A84FF]/20 border border-[#0A84FF]/30'
-                    : 'bg-[#1C1C1E] hover:bg-[#2C2C2E] border border-transparent'
+                    ? 'dark:bg-blue-500/20 bg-blue-50 border dark:border-blue-500/30 border-blue-200'
+                    : 'dark:bg-gray-900 bg-gray-100 hover:dark:bg-gray-800 hover:bg-gray-200 border border-transparent'
                 }`}
               >
                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                   selectedAgentIds.includes(agent.id)
-                    ? 'bg-[#0A84FF] border-[#0A84FF]'
-                    : 'border-[#636366]'
+                    ? 'dark:bg-blue-500 bg-blue-500 border-blue-500'
+                    : 'dark:border-gray-600 border-gray-400'
                 }`}>
                   {selectedAgentIds.includes(agent.id) && (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
@@ -81,7 +81,7 @@ export function GroupModal({ isOpen, onClose, agents, onCreateGroup }: GroupModa
                     </svg>
                   )}
                 </div>
-                <span className="text-[14px] text-white">{agent.name}</span>
+                <span className="text-[14px] dark:text-white text-gray-900">{agent.name}</span>
               </button>
             ))}
           </div>

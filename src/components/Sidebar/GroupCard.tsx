@@ -17,8 +17,8 @@ export function GroupCard({ group, agents, isActive, onClick, onDelete }: GroupC
     <div
       className={`group relative p-3 rounded-xl cursor-pointer transition-all duration-150 ${
         isActive 
-          ? 'bg-[#0A84FF]/20 border border-[#0A84FF]/30' 
-          : 'bg-[#1C1C1E] hover:bg-[#2C2C2E] border border-transparent'
+          ? 'dark:bg-blue-500/20 bg-blue-50 border dark:border-blue-500/30 border-blue-200' 
+          : 'dark:bg-gray-900 bg-gray-100 hover:dark:bg-gray-800 hover:bg-gray-200 border border-transparent'
       }`}
       onClick={onClick}
     >
@@ -30,12 +30,12 @@ export function GroupCard({ group, agents, isActive, onClick, onDelete }: GroupC
           ) : (
             <div className="flex -space-x-2">
               {groupAgents.slice(0, 3).map((agent, idx) => (
-                <div key={agent.id} className="ring-2 ring-[#1C1C1E] rounded-full">
+                <div key={agent.id} className="ring-2 dark:ring-gray-900 ring-white rounded-full">
                   <Avatar name={agent.name} size="sm" />
                 </div>
               ))}
               {groupAgents.length > 3 && (
-                <div className="w-8 h-8 rounded-full bg-[#2C2C2E] ring-2 ring-[#1C1C1E] flex items-center justify-center text-[10px] text-white font-medium">
+                <div className="w-8 h-8 rounded-full dark:bg-gray-800 bg-gray-200 ring-2 dark:ring-gray-900 ring-white flex items-center justify-center text-[10px] dark:text-white text-gray-900 font-medium">
                   +{groupAgents.length - 3}
                 </div>
               )}
@@ -43,13 +43,13 @@ export function GroupCard({ group, agents, isActive, onClick, onDelete }: GroupC
           )}
           {/* Active indicator - positioned on the right side of the avatar */}
           {isActive && (
-            <div className="absolute top-0 right-0 w-3 h-3 bg-[#30D158] rounded-full border-2 border-[#1C1C1E]" />
+            <div className="absolute top-0 right-0 w-3 h-3 dark:bg-green-500 bg-green-500 rounded-full border-2 dark:border-gray-900 border-white" />
           )}
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-semibold text-white truncate">{group.name}</h3>
-          <p className="text-[12px] text-[#8E8E93] truncate">
+          <h3 className="text-[14px] font-semibold dark:text-white text-gray-900 truncate">{group.name}</h3>
+          <p className="text-[12px] dark:text-gray-400 text-gray-600 truncate">
             {groupAgents.length} agent{groupAgents.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -61,7 +61,7 @@ export function GroupCard({ group, agents, isActive, onClick, onDelete }: GroupC
           e.stopPropagation();
           onDelete();
         }}
-        className="absolute top-2 right-2 p-1.5 text-[#8E8E93] hover:text-[#FF453A] hover:bg-[#FF453A]/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150"
+        className="absolute top-2 right-2 p-1.5 dark:text-gray-400 text-gray-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150"
         title="Delete group"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

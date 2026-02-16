@@ -200,7 +200,6 @@ function AppContent() {
           onClose={() => setIsSearchOpen(false)}
           onJumpToMessage={(messageId) => {
             // Scroll to message - this would need to be implemented in ChatArea
-            console.log('Jump to message:', messageId);
           }}
         />
       )}

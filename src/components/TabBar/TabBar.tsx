@@ -40,7 +40,6 @@ export function TabBar({ onNewTab }: TabBarProps) {
     const newName = prompt('Enter new tab name:', group.name);
     if (newName && newName.trim()) {
       // Would need to add updateGroup to context
-      console.log('Rename tab:', groupId, newName);
     }
     setContextMenu(null);
   };

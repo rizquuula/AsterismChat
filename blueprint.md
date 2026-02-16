@@ -3,7 +3,7 @@
 ## 1. Project Overview
 
 **Project Name:** AsterismChat  
-**Project Type:** Web Application (Frontend + Backend)  
+**Project Type:** Web Application (Single Page Application)  
 **Core Functionality:** A group chat interface where a user can interact with multiple AI agents simultaneously. Messages from the user are broadcast to selected (or all) agents, and agents can respond to each other.  
 **Target Users:** Developers and researchers working with multiple AI agents
 
@@ -90,12 +90,12 @@ Inspired by Apple's elegant dark theme design language:
 - Each agent card shows:
   - Avatar (colored circle with first letter of agent name)
   - Agent name
-  - Status indicator (online/offline dot)
+  - Status indicator (last response time or "waiting" state)
   - Delete button (appears on hover)
 - "Add Agent" button at bottom with `+` icon
 
 #### Chat Area
-- Virtualized scrolling for performance
+- Standard scrollable container (not virtualized for MVP)
 - Messages grouped by timestamp (Today, Yesterday, Date)
 - Each message shows:
   - Sender avatar (colored circle)
@@ -113,16 +113,16 @@ Inspired by Apple's elegant dark theme design language:
 #### Add/Edit Agent Modal
 - Centered modal with backdrop blur
 - Fields:
-  - Agent Name (text input)
-  - Endpoint URL (text input, placeholder: `http://localhost:8000/v1/chat/completions`)
-  - API Key (password input with show/hide toggle)
+  - Agent Name (text input, required)
+  - Endpoint URL (text input, required, placeholder: `http://localhost:8000/v1/chat/completions`)
+  - Model Name (text input, required, placeholder: `asterism/Asteri`)
+  - API Key (password input with show/hide toggle, required)
 - Buttons: Cancel (secondary), Save (primary)
 
 #### Settings Panel
 - Slide-out panel from right
 - Options:
   - Clear chat history
-  - Theme toggle (future: light mode)
   - Export chat as JSON
 
 ### 2.6 Animations & Interactions
@@ -135,7 +135,7 @@ Inspired by Apple's elegant dark theme design language:
 | Modal open | Fade in + scale from 0.95 (200ms ease-out) |
 | Sidebar collapse | Slide + fade (250ms ease-in-out) |
 | Loading state | Pulsing skeleton with shimmer effect |
-| Agent typing | Three bouncing dots animation |
+| Agent responding | Three bouncing dots animation |
 
 ---
 
@@ -146,8 +146,8 @@ Inspired by Apple's elegant dark theme design language:
 #### Agent Management
 1. **Add Agent**
    - Click "+" button in sidebar
-   - Fill in: Name, Endpoint URL, API Key
-   - Validate: URL format, non-empty fields
+   - Fill in: Name, Endpoint URL, Model Name, API Key
+   - Validate: URL format (must be valid HTTP/HTTPS URL), non-empty fields
    - Save to local storage
 
 2. **Remove Agent**
@@ -169,16 +169,43 @@ Inspired by Apple's elegant dark theme design language:
    - Message appears in chat immediately (pending state)
    - Send HTTP POST to each selected agent's endpoint
 
-2. **Message Broadcasting**
-   - User message → sent to selected agents
-   - Each agent receives the full message history
-   - Each agent decides whether to respond (guard logic on agent side)
-   - Agent responses appear in chat as they arrive
+2. **Message Broadcasting Flow**
+   ```
+   User sends message
+         │
+         ▼
+   ┌─────────────────┐
+   │  User message   │─────── Display in chat
+   │  appears locally│
+   └─────────────────┘
+         │
+         ▼
+   For each selected agent:
+         │
+         ▼
+   ┌─────────────────────────────┐
+   │  POST to agent endpoint     │
+   │  - Full message history     │
+   │  - User's latest message    │
+   │  - Session ID               │
+   └─────────────────────────────┘
+         │
+         ▼
+   ┌─────────────────────────────┐
+   │  Agent decides to respond   │
+   │  (guard logic on agent side)│
+   └─────────────────────────────┘
+         │
+         ▼
+   Response appears in chat
+   ```
 
-3. **Receive Responses**
-   - Poll or receive agent responses via HTTP
-   - Display responses in chat with agent's name
-   - Handle errors gracefully (show error state on message)
+3. **Response Handling**
+   - Each agent responds independently (no guaranteed order)
+   - Display responses as they arrive
+   - Show "waiting" indicator if some agents haven't responded
+   - No timeout - let agents respond at their own pace
+   - Agent-to-agent responses: When Agent A responds, that response is broadcast to all agents (including Agent B) in the next request, enabling inter-agent conversation
 
 4. **Message History**
    - Persist chat in local storage
@@ -188,6 +215,9 @@ Inspired by Apple's elegant dark theme design language:
 ### 3.2 API Integration
 
 #### Request Format (to each agent)
+
+The key improvement: **Each request includes the FULL conversation history** so agents can understand context and respond to each other.
+
 ```json
 {
   "model": "asterism/Asteri",
@@ -195,11 +225,34 @@ Inspired by Apple's elegant dark theme design language:
     {
       "session_id": "session-uuid",
       "role": "user",
-      "content": "hello"
+      "content": "Hello, I have two agents here. What's 2+2?"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! 2+2 equals 4."
+    },
+    {
+      "role": "user", 
+      "content": "Can you explain to the other agent why?"
     }
   ]
 }
 ```
+
+**Message format for API:**
+```typescript
+interface ApiMessage {
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
+```
+
+**Construction rules:**
+1. Start with oldest message first
+2. For user messages: use `role: "user"` with the content
+3. For agent responses: use `role: "assistant"` with the response content
+4. Always include `session_id` in user messages only
 
 #### Headers
 ```
@@ -211,17 +264,24 @@ Authorization: Bearer {API_KEY}
 - Parse JSON response
 - Extract `choices[0].message.content`
 - Display with agent name and timestamp
-- Handle errors: network, timeout (30s), invalid JSON
+- Handle errors:
+  - **Network error**: Show "Connection failed" on message, allow retry
+  - **401 Unauthorized**: Show "Invalid API key" error, highlight agent
+  - **Timeout (30s)**: Show "Request timed out" error
+  - **Invalid JSON**: Show "Invalid response" error
+  - **Rate limited (429)**: Show "Rate limited, retrying..." with auto-retry
 
 ### 3.3 Data Models
 
 ```typescript
 interface Agent {
   id: string;           // UUID
-  name: string;         // Display name
+  name: string;         // Display name (e.g., "Asteri", "Assistant")
   endpoint: string;     // HTTP endpoint URL
+  model: string;        // Model name (e.g., "asterism/Asteri")
   apiKey: string;       // Bearer token
   createdAt: number;    // Unix timestamp
+  lastResponseAt?: number; // Last successful response timestamp
 }
 
 interface Message {
@@ -229,10 +289,11 @@ interface Message {
   sessionId: string;    // For agent API
   content: string;      // Message text
   sender: 'user' | Agent['id'];
-  senderName: string;   // Display name
+  senderName: string;   // Display name (e.g., "You", "Asteri")
   timestamp: number;    // Unix timestamp
   status: 'sending' | 'sent' | 'error';
   targets?: string[];   // Agent IDs this was sent to
+  error?: string;       // Error message if status is 'error'
 }
 
 interface ChatState {
@@ -246,11 +307,13 @@ interface ChatState {
 
 1. **No agents configured**: Show empty state with "Add your first agent" prompt
 2. **All agents removed**: Disable input, show empty state
-3. **Agent endpoint unreachable**: Show error on message, allow retry
-4. **API key invalid**: Show 401 error, prompt to update agent
-5. **Very long messages**: Truncate in UI with "Show more" option
+3. **Agent endpoint unreachable**: Show error on message, allow retry button
+4. **API key invalid**: Show 401 error with "Update API key" action button
+5. **Very long messages**: Allow text wrapping, no truncate for MVP
 6. **Rapid message sending**: Queue messages, process sequentially
 7. **Page refresh**: Restore state from local storage
+8. **Agent takes long time to respond**: Show "typing" indicator, no timeout
+9. **All agents fail to respond**: Show "No responses" indicator after user cancels or closes browser
 
 ---
 
@@ -261,27 +324,34 @@ interface ChatState {
 | Layer | Technology |
 |-------|------------|
 | Frontend | React + TypeScript |
-| Styling | CSS Modules or Tailwind CSS |
+| Styling | Tailwind CSS |
 | State Management | React Context + useReducer |
 | Storage | localStorage |
 | HTTP Client | Fetch API |
 | Build Tool | Vite |
 
+**Why Tailwind CSS?**
+- Faster development with utility classes
+- Easy to implement Apple-like design system
+- Built-in dark mode support
+- Small bundle size with PurgeCSS
+
 ### 4.2 Project Structure
 
 ```
 asterism-chat/
-├── public/
-│   └── index.html
+├── index.html
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── tailwind.config.js
+├── postcss.config.js
 ├── src/
-│   ├── components/
-│   │   ├── Header/
-│   │   ├── Sidebar/
-│   │   ├── ChatArea/
-│   │   ├── MessageBubble/
-│   │   ├── InputArea/
-│   │   ├── AgentModal/
-│   │   └── SettingsPanel/
+│   ├── main.tsx
+│   ├── App.tsx
+│   ├── index.css
+│   ├── types/
+│   │   └── index.ts
 │   ├── context/
 │   │   └── ChatContext.tsx
 │   ├── hooks/
@@ -289,92 +359,122 @@ asterism-chat/
 │   │   └── useChat.ts
 │   ├── services/
 │   │   └── agentApi.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── styles/
-│   │   └── global.css
-│   ├── App.tsx
-│   └── main.tsx
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── index.html
+│   ├── utils/
+│   │   └── messageFormatter.ts
+│   └── components/
+│       ├── Header/
+│       │   ├── Header.tsx
+│       │   └── Header.module.css
+│       ├── Sidebar/
+│       │   ├── Sidebar.tsx
+│       │   ├── Sidebar.module.css
+│       │   └── AgentCard.tsx
+│       ├── ChatArea/
+│       │   ├── ChatArea.tsx
+│       │   └── ChatArea.module.css
+│       ├── MessageBubble/
+│       │   ├── MessageBubble.tsx
+│       │   └── MessageBubble.module.css
+│       ├── InputArea/
+│       │   ├── InputArea.tsx
+│       │   └── InputArea.module.css
+│       ├── AgentModal/
+│       │   ├── AgentModal.tsx
+│       │   └── AgentModal.module.css
+│       ├── SettingsPanel/
+│       │   ├── SettingsPanel.tsx
+│       │   └── SettingsPanel.module.css
+│       └── common/
+│           ├── Button.tsx
+│           ├── Modal.tsx
+│           ├── Input.tsx
+│           └── Avatar.tsx
 ```
 
-### 4.3 Backend Requirements
+### 4.3 Security Considerations
 
-A simple backend server is required to:
-1. Serve the frontend static files
-2. Handle CORS if frontend and agents are on different domains
-3. (Optional) Proxy requests to agents if needed
+⚠️ **Important Security Note:**
 
-Can be implemented with:
-- **Node.js/Express**: Simple and familiar
-- **Python/FastAPI**: Quick to set up
-- **Go**: High performance
+Storing API keys in localStorage has security implications:
+- **XSS Vulnerability**: Malicious scripts can access localStorage
+- **Physical Access**: Anyone with device access can view keys
+- **No Encryption**: Keys stored in plain text
 
-For simplicity, we can use a **Node.js/Express** server.
+**Mitigations for MVP:**
+1. Add warning in UI when adding API keys
+2. Consider using sessionStorage instead (cleared on tab close)
+3. For production: Use a backend proxy with proper authentication
 
-```
-server/
-├── index.js          # Express server
-├── package.json
-└── .env              # Port configuration
-```
+### 4.4 No Backend Required
+
+For this MVP, **no backend server is needed** if:
+- Agents run on localhost or same domain
+- CORS is handled by the agent servers
+- Frontend is served via Vite dev server or static hosting
+
+If agents are on different domains and CORS is an issue, a simple proxy can be added later.
 
 ---
 
-## 5. Implementation Phases
+## 5. Implementation Plan
 
-### Phase 1: Core UI (Week 1)
-- [ ] Set up React + Vite project
-- [ ] Implement dark theme styling
-- [ ] Create Header component
-- [ ] Create Sidebar with agent list
-- [ ] Create ChatArea with message display
-- [ ] Create InputArea with agent selector
-- [ ] Add local storage persistence
+### Phase 1: Foundation (Day 1)
+- [ ] Initialize React + Vite + TypeScript project
+- [ ] Set up Tailwind CSS with custom Apple-like theme
+- [ ] Create type definitions
+- [ ] Implement useLocalStorage hook
 
-### Phase 2: Agent Management (Week 1-2)
-- [ ] Create Add Agent modal
-- [ ] Create Edit Agent modal
+### Phase 2: Core UI (Day 2)
+- [ ] Create ChatContext for state management
+- [ ] Build Header component
+- [ ] Build Sidebar with agent list
+- [ ] Build ChatArea with message display
+- [ ] Build MessageBubble component
+
+### Phase 3: Agent Management (Day 3)
+- [ ] Create AgentModal for add/edit
 - [ ] Implement agent CRUD operations
-- [ ] Validate agent inputs
-- [ ] Add delete confirmation
+- [ ] Add input validation
+- [ ] Implement delete confirmation
 
-### Phase 3: API Integration (Week 2)
-- [ ] Create agent API service
+### Phase 4: Chat Functionality (Day 4)
+- [ ] Build InputArea with agent selector
 - [ ] Implement message sending logic
+- [ ] Create agentApi service
 - [ ] Handle responses and display
-- [ ] Implement error handling
-- [ ] Add loading states
 
-### Phase 4: Polish (Week 2-3)
+### Phase 5: Polish (Day 5)
 - [ ] Add animations
-- [ ] Implement virtual scrolling (if needed)
+- [ ] Implement error handling states
 - [ ] Add empty states
 - [ ] Responsive design for mobile
-- [ ] Settings panel
-- [ ] Export chat functionality
+- [ ] Settings panel with export/clear
+
+**Total Estimated Time: 5 days**
 
 ---
 
 ## 6. Acceptance Criteria
 
 ### Visual Checkpoints
-- [ ] Dark theme matches Apple elegance
-- [ ] All text is readable (proper contrast)
+- [ ] Dark theme matches Apple elegance (deep blacks, subtle grays)
+- [ ] All text is readable (proper contrast ratios)
 - [ ] Animations are smooth (60fps)
-- [ ] Layout is responsive (mobile + desktop)
+- [ ] Layout is responsive (mobile 375px to desktop 1920px)
 - [ ] Empty states are clear and helpful
 
 ### Functional Checkpoints
-- [ ] Can add, edit, delete agents
-- [ ] Can send message to all agents
-- [ ] Can send message to selected agents
-- [ ] Agent responses display correctly
-- [ ] Chat history persists after refresh
-- [ ] Error states are handled gracefully
+- [ ] Can add agent with name, endpoint, model, and API key
+- [ ] Can edit existing agent configuration
+- [ ] Can delete agent with confirmation
+- [ ] Can send message to all agents (broadcast)
+- [ ] Can send message to selected agents only
+- [ ] Each agent receives full conversation history
+- [ ] Agent responses display with correct sender name
+- [ ] Chat history persists after page refresh
+- [ ] Error states display clearly (network, auth, timeout)
+- [ ] Can clear chat history
+- [ ] Can export chat as JSON
 
 ### Performance Checkpoints
 - [ ] Initial load < 2 seconds
@@ -383,24 +483,76 @@ server/
 
 ---
 
-## 7. Future Enhancements
+## 7. Future Enhancements (Post-MVP)
 
-- [ ] Voice input (Speech-to-Text)
 - [ ] Markdown rendering in messages
 - [ ] Code syntax highlighting
 - [ ] Image/file attachments
-- [ ] Multiple sessions
+- [ ] Multiple chat sessions
 - [ ] Agent personality customization
 - [ ] Message search
 - [ ] Keyboard shortcuts
+- [ ] Voice input (Speech-to-Text)
 - [ ] Dark/Light theme toggle
 - [ ] Agent collaboration settings (timeout, retry logic)
+- [ ] Backend proxy for security
+- [ ] User authentication
 
 ---
 
-## 8. Notes
+## 8. API Reference
 
-- The guard logic for "what message should be answered" is on the **agent side** - the backend simply broadcasts messages to all agents
+### Sending a Message
+
+**Request:**
+```bash
+curl --location 'http://localhost:8000/v1/chat/completions' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "model": "asterism/Asteri",
+    "messages": [
+      {
+        "session_id": "session-uuid",
+        "role": "user",
+        "content": "hello"
+      }
+    ]
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "chatcmpl-1760739de57f",
+  "object": "chat.completion",
+  "created": 1771210760,
+  "model": "asterism/Asteri",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello there! 👋 It's so nice to meet you. How are you doing today?"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 2418,
+    "completion_tokens": 1258,
+    "total_tokens": 3676
+  }
+}
+```
+
+---
+
+## 9. Notes
+
+- The guard logic for "what message should be answered" is on the **agent side** - the frontend simply broadcasts messages to all agents
 - Use **non-streaming HTTP** for simplicity as specified
-- All agent configurations are stored in **local storage** (no backend database needed for MVP)
+- All agent configurations are stored in **local storage**
 - Session ID is generated on first load and persists in local storage
+- Agents respond **asynchronously and independently** - no guaranteed order
+- When an agent responds, that response becomes part of the conversation history for subsequent messages

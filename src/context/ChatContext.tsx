@@ -277,20 +277,27 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       targets: targetAgentIds,
     });
 
-    // Send to each selected agent
+      // Send to each selected agent
     for (const agentId of targetAgentIds) {
       const agent = state.agents.find(a => a.id === agentId);
       if (!agent) continue;
 
+      // Generate message ID upfront so we can update it later
+      const pendingMessageId = generateUUID();
+      const timestamp = Date.now();
+
       // Add placeholder for agent response
-      addMessage({
+      const pendingMessage: Message = {
+        id: pendingMessageId,
         sessionId,
         content: '',
         sender: agentId,
         senderName: agent.name,
+        timestamp,
         status: 'sending',
         targets: [agentId],
-      });
+      };
+      dispatch({ type: 'ADD_MESSAGE', payload: pendingMessage });
 
       try {
         const response = await fetch(agent.endpoint, {
@@ -318,55 +325,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         const agentContent = data.choices?.[0]?.message?.content || 'No response';
 
-        // Get current messages to find the pending one
-        const currentMessages = state.messages;
-        const msgIndex = currentMessages.findIndex(m => 
-          m.sender === agentId && m.status === 'sending' && m.sessionId === sessionId
-        );
-        
-        if (msgIndex !== -1) {
-          updateMessage(currentMessages[msgIndex].id, {
-            content: agentContent,
-            status: 'sent',
-          });
-        } else {
-          addMessage({
-            sessionId,
-            content: agentContent,
-            sender: agentId,
-            senderName: agent.name,
-            status: 'sent',
-            targets: [agentId],
-          });
-        }
+        // Use the pending message ID directly to update
+        updateMessage(pendingMessageId, {
+          content: agentContent,
+          status: 'sent',
+        });
 
         // Update agent's last response time
         updateAgent({ ...agent, lastResponseAt: Date.now() });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
-        const currentMessages = state.messages;
-        const msgIndex = currentMessages.findIndex(m => 
-          m.sender === agentId && m.status === 'sending' && m.sessionId === sessionId
-        );
-        
-        if (msgIndex !== -1) {
-          updateMessage(currentMessages[msgIndex].id, {
-            content: '',
-            status: 'error',
-            error: errorMessage,
-          });
-        } else {
-          addMessage({
-            sessionId,
-            content: '',
-            sender: agentId,
-            senderName: agent.name,
-            status: 'error',
-            error: errorMessage,
-            targets: [agentId],
-          });
-        }
+        // Use the pending message ID directly to update
+        updateMessage(pendingMessageId, {
+          content: '',
+          status: 'error',
+          error: errorMessage,
+        });
       }
     }
   };

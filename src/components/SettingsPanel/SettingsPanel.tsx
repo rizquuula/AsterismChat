@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useChat } from '../../context/ChatContext';
-import { useTheme, Theme } from '../../context/ThemeContext';
-import { exportChat, downloadExport, getMimeType, getFileExtension, ExportOptions } from '../../utils/export';
-
-type ExportFormat = 'json' | 'markdown' | 'text';
+import { ThemeSettings } from './ThemeSettings';
+import { ChatStats } from './ChatStats';
+import { ExportSettings } from './ExportSettings';
+import { AboutSection } from './AboutSection';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -12,39 +12,11 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { state, clearMessages } = useChat();
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
-  const [includeMetadata, setIncludeMetadata] = useState(true);
 
   const handleClearHistory = () => {
     if (window.confirm('Are you sure you want to clear all chat history? This action cannot be undone.')) {
       clearMessages();
     }
-  };
-
-  const themeOptions: { value: Theme; label: string; icon: string }[] = [
-    { value: 'dark', label: 'Dark', icon: '🌙' },
-    { value: 'light', label: 'Light', icon: '☀️' },
-    { value: 'system', label: 'System', icon: '💻' },
-  ];
-
-  const exportFormats: { value: ExportFormat; label: string; icon: string; description: string }[] = [
-    { value: 'json', label: 'JSON', icon: '📋', description: 'Full data with metadata' },
-    { value: 'markdown', label: 'Markdown', icon: '📝', description: 'Human-readable format' },
-    { value: 'text', label: 'Plain Text', icon: '📄', description: 'Simple dialogue' },
-  ];
-
-  const handleExport = () => {
-    const options: ExportOptions = {
-      format: exportFormat,
-      includeMetadata,
-    };
-    
-    const content = exportChat(state, options);
-    const filename = `asterism-chat-${new Date().toISOString().split('T')[0]}.${getFileExtension(exportFormat)}`;
-    const mimeType = getMimeType(exportFormat);
-    
-    downloadExport(content, filename, mimeType);
   };
 
   if (!isOpen) return null;
@@ -74,92 +46,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
         {/* Settings Content */}
         <div className="p-4 space-y-4">
-          {/* Theme Toggle */}
-          <div className="p-4 bg-[#2C2C2E] rounded-xl">
-            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">Appearance</h3>
-            <div className="flex gap-2">
-              {themeOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setTheme(option.value)}
-                  className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 ${
-                    theme === option.value
-                      ? 'bg-[#0A84FF] text-white'
-                      : 'bg-[#1C1C1E] text-[#8E8E93] hover:bg-[#3C3C3E]'
-                  }`}
-                >
-                  <span className="text-xl">{option.icon}</span>
-                  <span className="text-[13px] font-medium">{option.label}</span>
-                </button>
-              ))}
-            </div>
-            {theme === 'system' && (
-              <p className="text-[12px] text-[#8E8E93] mt-3 text-center">
-                Currently using {resolvedTheme} mode based on system preference
-              </p>
-            )}
-          </div>
+          {/* Theme Settings */}
+          <ThemeSettings />
 
           {/* Chat Statistics */}
-          <div className="p-4 bg-[#2C2C2E] rounded-xl">
-            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">Chat Statistics</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-[14px]">
-                <span className="text-[#8E8E93]">Total Messages</span>
-                <span className="text-white font-medium">{state.messages.length}</span>
-              </div>
-              <div className="flex justify-between text-[14px]">
-                <span className="text-[#8E8E93]">Total Agents</span>
-                <span className="text-white font-medium">{state.agents.length}</span>
-              </div>
-            </div>
-          </div>
+          <ChatStats state={state} />
 
-          {/* Export Section */}
-          <div className="space-y-3">
-            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide px-1">Export Chat</h3>
-            
-            {/* Format Selector */}
-            <div className="grid grid-cols-3 gap-2">
-              {exportFormats.map((format) => (
-                <button
-                  key={format.value}
-                  onClick={() => setExportFormat(format.value)}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${
-                    exportFormat === format.value
-                      ? 'bg-[#0A84FF] text-white'
-                      : 'bg-[#2C2C2E] text-[#8E8E93] hover:bg-[#3C3C3E]'
-                  }`}
-                >
-                  <span className="text-xl">{format.icon}</span>
-                  <span className="text-[12px] font-medium">{format.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Include Metadata Toggle */}
-            <label className="flex items-center gap-3 px-3 py-2 bg-[#2C2C2E] rounded-xl cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeMetadata}
-                onChange={(e) => setIncludeMetadata(e.target.checked)}
-                className="w-4 h-4 rounded border-[#38383A] text-[#0A84FF] focus:ring-[#0A84FF] bg-[#1C1C1E]"
-              />
-              <span className="text-[14px] text-[#8E8E93]">Include metadata</span>
-            </label>
-
-            {/* Export Button */}
-            <button
-              onClick={handleExport}
-              disabled={state.messages.length === 0}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#0A84FF] hover:bg-[#409CFF] rounded-xl text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-              <span className="text-[15px]">Export as {exportFormat === 'markdown' ? 'Markdown' : exportFormat === 'text' ? 'Text' : 'JSON'}</span>
-            </button>
-          </div>
+          {/* Export Settings */}
+          <ExportSettings state={state} />
 
           {/* Actions */}
           <div className="space-y-2 pt-4 border-t border-[#38383A]">
@@ -178,25 +72,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* About */}
-          <div className="pt-4 border-t border-[#38383A]">
-            <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">About</h3>
-            <div className="p-4 bg-[#2C2C2E] rounded-xl">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0A84FF] to-[#5E5CE6] flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="text-[15px] font-semibold text-white">AsterismChat</h4>
-                  <p className="text-[12px] text-[#8E8E93]">Version 1.0.0</p>
-                </div>
-              </div>
-              <p className="text-[13px] text-[#8E8E93]">
-                A group chat interface for interacting with multiple AI agents simultaneously.
-              </p>
-            </div>
-          </div>
+          <AboutSection />
         </div>
       </div>
     </>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { ChatState, Agent, Message, Group } from '../types';
 import { useLocalStorage, generateUUID } from '../hooks/useLocalStorage';
 import { chatReducer, initialState } from './chatReducer';
@@ -13,11 +13,10 @@ import {
   createAddMessage,
   createUpdateMessage,
   createClearMessages,
-  createStartNewSession,
   createGetActiveGroupMessages,
-  createCreateGroupForAgent,
 } from './chatActions';
 import { callAgentApi } from './chatApi';
+import { createChatService } from './services/chatService';
 
 const STORAGE_KEY = 'asterism-chat-state';
 
@@ -73,116 +72,27 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [state.activeGroupId, state.groups, state.messages]
   );
 
-  const startNewSession = useCallback(() => {
-    const newSessionId = generateUUID();
-    
-    addMessage({
-      sessionId: state.sessionId,
-      content: `New chat session initialized with id "${newSessionId}"`,
-      sender: 'system',
-      senderName: 'System',
-      status: 'sent',
-    });
-    
-    dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
-    
-    if (state.activeGroupId) {
-      const group = state.groups.find(g => g.id === state.activeGroupId);
-      if (group) {
-        updateGroup({ ...group, sessionId: newSessionId });
-      }
-    }
-  }, [state.sessionId, state.activeGroupId, state.groups, addMessage, updateGroup, dispatch]);
-
-  const createGroupForAgent = useCallback(
-    createCreateGroupForAgent(
+  // Create chat service with dependencies
+  const chatService = useMemo(() => {
+    return createChatService({
       dispatch,
-      () => state.agents,
-      () => state.groups,
+      getState: () => state,
+      addMessage,
+      updateMessage,
+      updateAgent,
+      updateGroup,
+      addGroup,
       setActiveGroup,
-      addGroup
-    ),
-    [dispatch, state.agents, state.groups, setActiveGroup, addGroup]
-  );
-
-  const sendMessage = useCallback(async (content: string) => {
-    // Handle "/new" command
-    if (content.trim().toLowerCase() === '/new') {
-      startNewSession();
-      return;
-    }
-
-    // Get target agents from active group or all agents
-    let targetAgentIds: string[];
-    let sessionId: string;
-
-    if (state.activeGroupId) {
-      const group = state.groups.find(g => g.id === state.activeGroupId);
-      if (!group) {
-        targetAgentIds = state.agents.map(a => a.id);
-        sessionId = state.sessionId;
-      } else {
-        targetAgentIds = group.agentIds;
-        sessionId = group.sessionId;
-      }
-    } else {
-      targetAgentIds = state.agents.map(a => a.id);
-      sessionId = state.sessionId;
-    }
-
-    if (targetAgentIds.length === 0) return;
-
-    // Add user message
-    addMessage({
-      sessionId,
-      content,
-      sender: 'user',
-      senderName: 'You',
-      status: 'sent',
-      targets: targetAgentIds,
     });
+  }, [dispatch, state, addMessage, updateMessage, updateAgent, updateGroup, addGroup, setActiveGroup]);
 
-    // Send to each selected agent
-    for (const agentId of targetAgentIds) {
-      const agent = state.agents.find(a => a.id === agentId);
-      if (!agent) continue;
+  // Expose service methods
+  const { startNewSession, createGroupForAgent, sendMessage } = chatService;
 
-      const pendingMessageId = generateUUID();
-      const timestamp = Date.now();
-
-      // Add placeholder for agent response
-      const pendingMessage: Message = {
-        id: pendingMessageId,
-        sessionId,
-        content: '',
-        sender: agentId,
-        senderName: agent.name,
-        timestamp,
-        status: 'sending',
-        targets: [agentId],
-      };
-      dispatch({ type: 'ADD_MESSAGE', payload: pendingMessage });
-
-      try {
-        const agentContent = await callAgentApi(agent, sessionId, content);
-
-        updateMessage(pendingMessageId, {
-          content: agentContent,
-          status: 'sent',
-        });
-
-        updateAgent({ ...agent, lastResponseAt: Date.now() });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        
-        updateMessage(pendingMessageId, {
-          content: '',
-          status: 'error',
-          error: errorMessage,
-        });
-      }
-    }
-  }, [state.activeGroupId, state.groups, state.agents, state.sessionId, addMessage, startNewSession, updateMessage, updateAgent, dispatch]);
+  // Wrap sendMessage to include the API call
+  const handleSendMessage = useCallback(async (content: string) => {
+    await chatService.sendMessage(content, callAgentApi);
+  }, [chatService]);
 
   return (
     <ChatContext.Provider
@@ -199,7 +109,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         addMessage,
         updateMessage,
         clearMessages,
-        sendMessage,
+        sendMessage: handleSendMessage,
         createGroupForAgent,
         startNewSession,
         getActiveGroupMessages,

@@ -1,4 +1,4 @@
-.PHONY: install build dev dev-fe dev-be preview lint clean help
+.PHONY: install build dev dev-fe dev-be preview lint clean help migrate
 
 # Default target
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  make preview   - Preview the production build"
 	@echo "  make lint      - Run ESLint"
 	@echo "  make clean     - Remove build artifacts"
+	@echo "  make migrate   - Push Prisma schema to database (preserves data)"
 
 install:
 	npm install
@@ -40,3 +41,6 @@ lint:
 
 clean:
 	rm -rf dist node_modules/.vite
+
+migrate:
+	cd server && npm run db:push

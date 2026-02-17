@@ -74,6 +74,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
+  // Format usage stats for display
+  const formatUsage = (usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }) => {
+    if (!usage) return null;
+    return `💰 ${usage.prompt_tokens} → ${usage.completion_tokens} (${usage.total_tokens} total)`;
+  };
+
   return (
     <div className={`flex gap-3 mb-4 animate-fade-in-up ${isUser ? 'flex-row-reverse' : ''}`}>
       {!isUser && <Avatar name={message.senderName} size="sm" />}
@@ -85,6 +91,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         <div className={`px-4 py-3 rounded-2xl ${isUser ? 'bg-[var(--accent-primary)]/20' : 'bg-[var(--bg-secondary)]'}`}>
           <MarkdownRenderer content={message.content} />
         </div>
+        {!isUser && message.usage && (
+          <div className="mt-1 text-[11px] text-[var(--text-tertiary)]">
+            {formatUsage(message.usage)}
+          </div>
+        )}
       </div>
     </div>
   );

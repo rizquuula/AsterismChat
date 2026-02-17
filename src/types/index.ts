@@ -34,6 +34,12 @@ export interface Group {
   createdAt: number;
 }
 
+export interface Usage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 export interface Message {
   id: string;
   sessionId: string;
@@ -45,6 +51,7 @@ export interface Message {
   status: 'sending' | 'sent' | 'error';
   targets?: string[];
   error?: string;
+  usage?: Usage;
 }
 
 export interface ChatState {

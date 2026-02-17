@@ -1,7 +1,12 @@
-import { Agent, Group, Message, ChatState } from '../../types';
+import { Agent, Group, Message, ChatState, Usage } from '../../types';
 import { generateUUID } from '../../hooks/useLocalStorage';
 import { Dispatch } from 'react';
 import { ChatAction } from '../../types';
+
+interface AgentApiResponse {
+  content: string;
+  usage?: Usage;
+}
 
 interface ChatServiceDeps {
   dispatch: Dispatch<ChatAction>;
@@ -61,7 +66,7 @@ export function createChatService(deps: ChatServiceDeps) {
     return group;
   };
 
-  const sendMessage = async (content: string, callAgentApi: (agent: Agent, sessionId: string, content: string) => Promise<string>) => {
+  const sendMessage = async (content: string, callAgentApi: (agent: Agent, sessionId: string, content: string) => Promise<AgentApiResponse>) => {
     const state = getState();
     
     // Handle "/new" command
@@ -128,11 +133,12 @@ export function createChatService(deps: ChatServiceDeps) {
       dispatch({ type: 'ADD_MESSAGE', payload: pendingMessage });
 
       try {
-        const agentContent = await callAgentApi(agent, sessionId, content);
+        const { content: agentContent, usage } = await callAgentApi(agent, sessionId, content);
 
         updateMessage(pendingMessageId, {
           content: agentContent,
           status: 'sent',
+          usage,
         });
 
         updateAgent({ ...agent, lastResponseAt: Date.now() });

@@ -1,4 +1,4 @@
-import { Agent } from '../types';
+import { Agent, Usage } from '../types';
 
 // Custom error class for timeout
 export class TimeoutError extends Error {
@@ -23,12 +23,17 @@ export interface CallAgentApiOptions {
   signal?: AbortSignal;
 }
 
+export interface AgentApiResponse {
+  content: string;
+  usage?: Usage;
+}
+
 export async function callAgentApi(
   agent: Agent,
   sessionId: string,
   userMessage: string,
   options: CallAgentApiOptions = {}
-): Promise<string> {
+): Promise<AgentApiResponse> {
   const settings = agent.settings;
   const timeout = options.timeout ?? settings.timeout;
   const maxRetries = options.maxRetries ?? settings.maxRetries;
@@ -78,7 +83,9 @@ export async function callAgentApi(
       }
 
       const data = await response.json();
-      return data.choices?.[0]?.message?.content || 'No response';
+      const content = data.choices?.[0]?.message?.content || 'No response';
+      const usage = data.usage;
+      return { content, usage };
 
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -122,7 +129,7 @@ export async function testAgentConnection(
     const result = await callAgentApi(agent, 'test-session', 'Hello');
     return {
       success: true,
-      message: result || 'Connection successful',
+      message: result.content || 'Connection successful',
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

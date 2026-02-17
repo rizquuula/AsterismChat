@@ -194,6 +194,7 @@ export const stateService = {
                 status: message.status,
                 targets: message.targets || null,
                 error: message.error || null,
+                usage: message.usage || null,
               },
             });
             messagesCreated++;
@@ -202,14 +203,16 @@ export const stateService = {
             const hasContentChanged = existingMessage.content !== message.content;
             const hasStatusChanged = existingMessage.status !== message.status;
             const hasErrorChanged = existingMessage.error !== (message.error || null);
+            const hasUsageChanged = JSON.stringify(existingMessage.usage) !== JSON.stringify(message.usage || null);
 
-            if (hasContentChanged || hasStatusChanged || hasErrorChanged) {
+            if (hasContentChanged || hasStatusChanged || hasErrorChanged || hasUsageChanged) {
               await tx.message.update({
                 where: { id: message.id },
                 data: {
                   content: message.content,
                   status: message.status,
                   error: message.error || null,
+                  usage: message.usage || null,
                 },
               });
               messagesUpdated++;

@@ -86,13 +86,13 @@ export const messagesController = {
   async create(req: Request, res: Response) {
     const requestId = (req as any).requestId;
     const startTime = Date.now();
-    const { sessionId, groupId, content, sender, senderName, status, targets } = req.body;
+    const { sessionId, groupId, content, sender, senderName, status, targets, usage } = req.body;
 
     try {
       logger.debug('Creating message', {
         requestId,
         operation: 'createMessage',
-        details: { sessionId, groupId, sender, status, contentLength: content?.length },
+        details: { sessionId, groupId, sender, status, contentLength: content?.length, hasUsage: !!usage },
       });
 
       const message = await messagesService.create({
@@ -103,6 +103,7 @@ export const messagesController = {
         senderName,
         status,
         targets,
+        usage,
       });
 
       const duration = Date.now() - startTime;
@@ -132,16 +133,16 @@ export const messagesController = {
     const requestId = (req as any).requestId;
     const startTime = Date.now();
     const { id } = req.params;
-    const { content, status, error } = req.body;
+    const { content, status, error, usage } = req.body;
 
     try {
       logger.debug('Updating message', {
         requestId,
         operation: 'updateMessage',
-        details: { messageId: id, status, hasError: !!error },
+        details: { messageId: id, status, hasError: !!error, hasUsage: !!usage },
       });
 
-      const message = await messagesService.update(id, { content, status, error });
+      const message = await messagesService.update(id, { content, status, error, usage });
 
       if (!message) {
         logger.warn('Message not found for update', { requestId, operation: 'updateMessage', details: { messageId: id } });

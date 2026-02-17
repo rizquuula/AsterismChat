@@ -63,5 +63,6 @@ export function formatMessage(message: any): Message {
     status: message.status as Message['status'],
     targets: message.targets as string[] | undefined,
     error: message.error || undefined,
+    usage: message.usage || undefined,
   };
 }

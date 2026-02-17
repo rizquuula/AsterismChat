@@ -42,6 +42,7 @@ export interface Message {
   status: 'sending' | 'sent' | 'error';
   targets?: string[];
   error?: string;
+  usage?: Usage;
 }
 
 export interface ChatState {

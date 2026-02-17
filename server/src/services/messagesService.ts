@@ -43,6 +43,7 @@ export const messagesService = {
     senderName: string;
     status: string;
     targets?: string[];
+    usage?: any;
   }): Promise<Message> {
     const message = await prisma.message.create({
       data: {
@@ -55,6 +56,7 @@ export const messagesService = {
         status: data.status,
         targets: data.targets || undefined,
         error: null,
+        usage: data.usage || undefined,
       },
     });
     return formatMessage(message);
@@ -69,12 +71,14 @@ export const messagesService = {
       content?: string;
       status?: string;
       error?: string | null;
+      usage?: any;
     }
   ): Promise<Message | null> {
     const updateData: any = {};
     if (data.content !== undefined) updateData.content = data.content;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.error !== undefined) updateData.error = data.error || null;
+    if (data.usage !== undefined) updateData.usage = data.usage || null;
 
     const message = await prisma.message.update({
       where: { id },

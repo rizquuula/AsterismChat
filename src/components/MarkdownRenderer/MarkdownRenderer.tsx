@@ -2,12 +2,16 @@ import React, { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { decodeUnicodeEscapeSequences } from '../../utils/emojiDecoder';
 
 interface MarkdownRendererProps {
   content: string;
 }
 
 function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
+  // Decode Unicode escape sequences (e.g., \uD83D\uDE00) to actual emoji characters
+  const decodedContent = decodeUnicodeEscapeSequences(content);
+
   return (
     <ReactMarkdown
       components={{
@@ -156,7 +160,7 @@ function MarkdownRendererComponent({ content }: MarkdownRendererProps) {
         ),
       }}
     >
-      {content}
+      {decodedContent}
     </ReactMarkdown>
   );
 }

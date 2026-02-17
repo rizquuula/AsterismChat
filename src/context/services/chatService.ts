@@ -20,9 +20,11 @@ export function createChatService(deps: ChatServiceDeps) {
   const startNewSession = () => {
     const state = getState();
     const newSessionId = generateUUID();
+    const groupId = state.activeGroupId || '';
     
     addMessage({
       sessionId: state.sessionId,
+      groupId,
       content: `New chat session initialized with id "${newSessionId}"`,
       sender: 'system',
       senderName: 'System',
@@ -71,19 +73,23 @@ export function createChatService(deps: ChatServiceDeps) {
     // Get target agents from active group or all agents
     let targetAgentIds: string[];
     let sessionId: string;
+    let groupId: string;
 
     if (state.activeGroupId) {
       const group = state.groups.find(g => g.id === state.activeGroupId);
       if (!group) {
         targetAgentIds = state.agents.map(a => a.id);
         sessionId = state.sessionId;
+        groupId = '';
       } else {
         targetAgentIds = group.agentIds;
         sessionId = group.sessionId;
+        groupId = group.id;
       }
     } else {
       targetAgentIds = state.agents.map(a => a.id);
       sessionId = state.sessionId;
+      groupId = '';
     }
 
     if (targetAgentIds.length === 0) return;
@@ -91,6 +97,7 @@ export function createChatService(deps: ChatServiceDeps) {
     // Add user message
     addMessage({
       sessionId,
+      groupId,
       content,
       sender: 'user',
       senderName: 'You',
@@ -110,6 +117,7 @@ export function createChatService(deps: ChatServiceDeps) {
       const pendingMessage: Message = {
         id: pendingMessageId,
         sessionId,
+        groupId,
         content: '',
         sender: agentId,
         senderName: agent.name,

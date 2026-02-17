@@ -36,6 +36,7 @@ function formatMessage(message: any): Message {
   return {
     id: message.id,
     sessionId: message.sessionId,
+    groupId: message.groupId,
     content: message.content,
     sender: message.sender,
     senderName: message.senderName,
@@ -194,6 +195,7 @@ router.post('/', async (req: Request, res: Response) => {
               data: {
                 id: message.id,
                 sessionId: message.sessionId,
+                groupId: message.groupId,
                 content: message.content,
                 sender: message.sender,
                 senderName: message.senderName,

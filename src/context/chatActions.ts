@@ -2,6 +2,7 @@ import { Agent, Group, Message, defaultAgentSettings, AgentSettings } from '../t
 import { generateUUID } from '../hooks/useLocalStorage';
 import { Dispatch } from 'react';
 import { ChatAction } from '../types';
+import { deleteGroup as apiDeleteGroup } from '../services/api';
 
 export function createAddAgent(dispatch: Dispatch<ChatAction>) {
   return (agentData: Omit<Agent, 'id' | 'createdAt'>) => {
@@ -47,11 +48,20 @@ export function createUpdateGroup(dispatch: Dispatch<ChatAction>) {
   };
 }
 
-export function createDeleteGroup(dispatch: Dispatch<ChatAction>, getGroups: () => Group[]) {
-  return (id: string) => {
+export function createDeleteGroup(dispatch: Dispatch<ChatAction>, getGroups: () => Group[], useApi: boolean = true) {
+  return async (id: string) => {
     const group = getGroups().find(g => g.id === id);
     if (group) {
-      dispatch({ type: 'DELETE_GROUP', payload: { id, sessionId: group.sessionId } });
+      dispatch({ type: 'DELETE_GROUP', payload: { id, sessionId: group.sessionId, groupId: group.id } });
+      
+      // Call API to delete group from server
+      if (useApi) {
+        try {
+          await apiDeleteGroup(id);
+        } catch (error) {
+          console.error('Failed to delete group on server:', error);
+        }
+      }
     }
   };
 }
@@ -72,6 +82,7 @@ export function createAddMessage(dispatch: Dispatch<ChatAction>) {
   return (messageData: Omit<Message, 'id' | 'timestamp'>): Message => {
     const message: Message = {
       ...messageData,
+      groupId: messageData.groupId || '',
       id: generateUUID(),
       timestamp: Date.now(),
     };
@@ -96,9 +107,11 @@ export function createStartNewSession(dispatch: Dispatch<ChatAction>, getState: 
   return () => {
     const state = getState();
     const newSessionId = generateUUID();
+    const groupId = state.activeGroupId || '';
     
     addMessage({
       sessionId: state.sessionId,
+      groupId,
       content: `New chat session initialized with id "${newSessionId}"`,
       sender: 'system',
       senderName: 'System',
@@ -116,13 +129,26 @@ export function createStartNewSession(dispatch: Dispatch<ChatAction>, getState: 
   };
 }
 
-export function createGetActiveGroupMessages(getState: () => { activeGroupId: string | null; groups: Group[]; messages: Message[] }) {
+export function createGetActiveGroupMessages(getState: () => { activeGroupId: string | null; groups: Group[]; messages: Message[]; sessionId: string }) {
   return (): Message[] => {
     const state = getState();
-    if (!state.activeGroupId) return [];
-    const group = state.groups.find(g => g.id === state.activeGroupId);
-    if (!group) return [];
-    return state.messages.filter(m => m.sessionId === group.sessionId);
+    
+    // If there's an active group, filter by group's sessionId
+    if (state.activeGroupId) {
+      const group = state.groups.find(g => g.id === state.activeGroupId);
+      if (group) {
+        return state.messages.filter(m => m.sessionId === group.sessionId);
+      }
+    }
+    
+    // If no active group, fall back to filtering by the global sessionId
+    // This handles the case where user is chatting without a selected group
+    if (state.sessionId) {
+      return state.messages.filter(m => m.sessionId === state.sessionId);
+    }
+    
+    // Last resort: return all messages (shouldn't happen in normal operation)
+    return state.messages;
   };
 }
 

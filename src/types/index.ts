@@ -37,6 +37,7 @@ export interface Group {
 export interface Message {
   id: string;
   sessionId: string;
+  groupId: string;
   content: string;
   sender: 'user' | 'system' | Agent['id'];
   senderName: string;
@@ -91,7 +92,7 @@ export type ChatAction =
   | { type: 'DELETE_AGENT'; payload: string }
   | { type: 'ADD_GROUP'; payload: Group }
   | { type: 'UPDATE_GROUP'; payload: Group }
-  | { type: 'DELETE_GROUP'; payload: { id: string; sessionId: string } }
+  | { type: 'DELETE_GROUP'; payload: { id: string; sessionId: string; groupId: string } }
   | { type: 'SET_ACTIVE_GROUP'; payload: string | null }
   | { type: 'ADD_MESSAGE'; payload: Message }
   | { type: 'UPDATE_MESSAGE'; payload: { id: string; updates: Partial<Message> } }

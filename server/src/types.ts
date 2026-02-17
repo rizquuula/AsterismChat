@@ -28,6 +28,7 @@ export interface Group {
 export interface Message {
   id: string;
   sessionId: string;
+  groupId: string;
   content: string;
   sender: string;
   senderName: string;

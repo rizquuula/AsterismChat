@@ -112,8 +112,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const clearMessages = useCallback(createClearMessages(dispatch), [dispatch]);
   
   const getActiveGroupMessages = useCallback(
-    createGetActiveGroupMessages(() => ({ activeGroupId: state.activeGroupId, groups: state.groups, messages: state.messages })),
-    [state.activeGroupId, state.groups, state.messages]
+    createGetActiveGroupMessages(() => ({ activeGroupId: state.activeGroupId, groups: state.groups, messages: state.messages, sessionId: state.sessionId })),
+    [state.activeGroupId, state.groups, state.messages, state.sessionId]
   );
 
   // Create chat service with dependencies

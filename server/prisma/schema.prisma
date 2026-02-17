@@ -29,6 +29,7 @@ model Group {
   createdAt BigInt   @map("created_at")
 
   agents    GroupAgent[]
+  messages  Message[]
 
   @@map("groups")
 }
@@ -47,6 +48,7 @@ model GroupAgent {
 model Message {
   id         String   @id @default(uuid())
   sessionId  String   @map("session_id")
+  groupId    String   @map("group_id")
   content    String
   sender     String
   senderName String   @map("sender_name")
@@ -54,6 +56,8 @@ model Message {
   status     String
   targets    Json?
   error      String?
+
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }

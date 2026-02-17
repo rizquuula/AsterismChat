@@ -48,7 +48,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         groups: state.groups.filter((group) => group.id !== action.payload.id),
         activeGroupId: state.activeGroupId === action.payload.id ? null : state.activeGroupId,
-        messages: state.messages.filter((msg) => msg.sessionId !== action.payload.sessionId),
+        messages: state.messages.filter((msg) => msg.groupId !== action.payload.id),
       };
     case 'SET_ACTIVE_GROUP':
       return {

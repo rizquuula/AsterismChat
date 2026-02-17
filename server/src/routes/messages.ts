@@ -7,9 +7,12 @@ const router = Router();
 // Get all messages (with optional filters)
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.query;
+    const { sessionId, groupId } = req.query;
 
-    const where = sessionId ? { sessionId: sessionId as string } : {};
+    const where = sessionId 
+      ? { sessionId: sessionId as string } 
+      : groupId ? { groupId: groupId as string } 
+      : {};
 
     const messages = await prisma.message.findMany({
       where,
@@ -19,6 +22,7 @@ router.get('/', async (req: Request, res: Response) => {
     const formattedMessages: Message[] = messages.map((msg) => ({
       id: msg.id,
       sessionId: msg.sessionId,
+      groupId: msg.groupId,
       content: msg.content,
       sender: msg.sender,
       senderName: msg.senderName,
@@ -48,6 +52,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     const formattedMessage: Message = {
       id: message.id,
       sessionId: message.sessionId,
+      groupId: message.groupId,
       content: message.content,
       sender: message.sender,
       senderName: message.senderName,
@@ -67,11 +72,12 @@ router.get('/:id', async (req: Request, res: Response) => {
 // Create message
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { sessionId, content, sender, senderName, status, targets, error } = req.body;
+    const { sessionId, groupId, content, sender, senderName, status, targets, error } = req.body;
 
     const message = await prisma.message.create({
       data: {
         sessionId,
+        groupId,
         content,
         sender,
         senderName,
@@ -85,6 +91,7 @@ router.post('/', async (req: Request, res: Response) => {
     const formattedMessage: Message = {
       id: message.id,
       sessionId: message.sessionId,
+      groupId: message.groupId,
       content: message.content,
       sender: message.sender,
       senderName: message.senderName,
@@ -119,6 +126,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const formattedMessage: Message = {
       id: message.id,
       sessionId: message.sessionId,
+      groupId: message.groupId,
       content: message.content,
       sender: message.sender,
       senderName: message.senderName,

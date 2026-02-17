@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { ChatState, Agent, Message, Group } from '../types';
-import { generateUUID } from '../hooks/useLocalStorage';
+import { generateUUID, useLocalStorage } from '../hooks/useLocalStorage';
 import { chatReducer, initialState } from './chatReducer';
 import {
   createAddAgent,
@@ -64,8 +64,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [initialStateLoaded, setInitialStateLoaded] = React.useState(false);
   
+  // Persist sessionId in localStorage to maintain session across page refreshes
+  const [storedSessionId, setStoredSessionId] = useLocalStorage('asterism-session-id', '');
+  
+  // Initialize sessionId: use stored value or generate new one
+  const initialSessionId = storedSessionId || generateUUID();
+  
   // Start with initial state, will be replaced with backend data
-  const [state, dispatch] = useReducer(chatReducer, { ...initialState, sessionId: generateUUID() });
+  const [state, dispatch] = useReducer(chatReducer, { ...initialState, sessionId: initialSessionId });
+
+  // Update localStorage when sessionId changes (after state is declared)
+  React.useEffect(() => {
+    if (state.sessionId && state.sessionId !== storedSessionId) {
+      setStoredSessionId(state.sessionId);
+    }
+  }, [state.sessionId, storedSessionId, setStoredSessionId]);
 
   // Load state from backend on mount
   useEffect(() => {
@@ -76,7 +89,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (healthOk) {
         const response = await getState();
         if (response.success && response.data) {
-          dispatch({ type: 'LOAD_STATE', payload: response.data });
+          // Preserve the local sessionId to maintain session continuity across refreshes
+          const stateWithPreservedSession = {
+            ...response.data,
+            sessionId: initialSessionId,
+          };
+          dispatch({ type: 'LOAD_STATE', payload: stateWithPreservedSession });
         }
       }
       
@@ -85,7 +103,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
 
     loadInitialState();
-  }, []);
+  }, [initialSessionId]);
 
   // Debounce state for saving to backend
   const debouncedState = useDebounce(state, 1000);

@@ -188,9 +188,20 @@ router.post('/', async (req: Request, res: Response) => {
 
       // Sync messages
       if (messages && Array.isArray(messages)) {
+        // Get all valid group IDs from the database
+        const validGroups = await tx.group.findMany({ select: { id: true } });
+        const validGroupIds = new Set(validGroups.map(g => g.id));
+        
         for (const message of messages) {
+          // Skip messages with invalid groupId (group doesn't exist)
+          if (message.groupId && !validGroupIds.has(message.groupId)) {
+            console.warn(`[State] Skipping message ${message.id}: invalid groupId ${message.groupId}`);
+            continue;
+          }
+          
           const existingMessage = await tx.message.findUnique({ where: { id: message.id } });
           if (!existingMessage) {
+            console.log(`[State] Creating new message: ${message.id}, content length: ${message.content?.length || 0}, status: ${message.status}`);
             await tx.message.create({
               data: {
                 id: message.id,
@@ -205,6 +216,24 @@ router.post('/', async (req: Request, res: Response) => {
                 error: message.error || null,
               },
             });
+          } else {
+            // Update existing message - this handles cases where message was created with empty content
+            // (e.g., "sending" status) and later updated with actual content (e.g., "sent" status)
+            const hasContentChanged = existingMessage.content !== message.content;
+            const hasStatusChanged = existingMessage.status !== message.status;
+            const hasErrorChanged = existingMessage.error !== (message.error || null);
+            
+            if (hasContentChanged || hasStatusChanged || hasErrorChanged) {
+              console.log(`[State] Updating message: ${message.id}, content changed: ${hasContentChanged} (old: "${existingMessage.content?.substring(0, 50)}...", new: "${message.content?.substring(0, 50)}..."), status changed: ${hasStatusChanged} (old: ${existingMessage.status}, new: ${message.status})`);
+              await tx.message.update({
+                where: { id: message.id },
+                data: {
+                  content: message.content,
+                  status: message.status,
+                  error: message.error || null,
+                },
+              });
+            }
           }
         }
       }

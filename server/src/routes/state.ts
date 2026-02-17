@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../db/client';
 import { ChatState, Agent, Group, Message } from '../types';
+import logger from '../utils/logger';
 
 const router = Router();
 
@@ -49,7 +50,12 @@ function formatMessage(message: any): Message {
 
 // Get full state
 router.get('/', async (req: Request, res: Response) => {
+  const requestId = (req as any).requestId;
+  const startTime = Date.now();
+  
   try {
+    logger.debug('Fetching full state', { requestId, operation: 'getState' });
+
     // Get all agents
     const agents = await prisma.agent.findMany({
       orderBy: { createdAt: 'desc' },
@@ -68,6 +74,7 @@ router.get('/', async (req: Request, res: Response) => {
     // Get or create session
     let session = await prisma.session.findFirst();
     if (!session) {
+      logger.debug('Creating new session', { requestId, operation: 'getState' });
       session = await prisma.session.create({
         data: {
           id: crypto.randomUUID(),
@@ -84,17 +91,56 @@ router.get('/', async (req: Request, res: Response) => {
       sessionId: session.id,
     };
 
+    const duration = Date.now() - startTime;
+    logger.info('State fetched', { 
+      requestId, 
+      operation: 'getState', 
+      duration,
+      details: { 
+        agents: formattedState.agents.length, 
+        groups: formattedState.groups.length, 
+        messages: formattedState.messages.length,
+        sessionId: formattedState.sessionId
+      }
+    });
+
     res.json({ success: true, data: formattedState });
   } catch (error) {
-    console.error('Error fetching state:', error);
+    logger.error('Failed to fetch state', { 
+      requestId, 
+      operation: 'getState',
+      error: error as Error 
+    });
     res.status(500).json({ success: false, error: 'Failed to fetch state' });
   }
 });
 
 // Save full state (upsert all data)
 router.post('/', async (req: Request, res: Response) => {
+  const requestId = (req as any).requestId;
+  const startTime = Date.now();
+  const { agents, groups, messages, activeGroupId, sessionId } = req.body;
+  
   try {
-    const { agents, groups, messages, activeGroupId, sessionId } = req.body;
+    logger.debug('Saving full state', { 
+      requestId, 
+      operation: 'saveState',
+      details: { 
+        agents: agents?.length, 
+        groups: groups?.length, 
+        messages: messages?.length,
+        sessionId,
+        activeGroupId
+      }
+    });
+
+    let agentsCreated = 0;
+    let agentsUpdated = 0;
+    let groupsCreated = 0;
+    let groupsUpdated = 0;
+    let messagesCreated = 0;
+    let messagesUpdated = 0;
+    let messagesSkipped = 0;
 
     // Start transaction
     await prisma.$transaction(async (tx) => {
@@ -106,6 +152,7 @@ router.post('/', async (req: Request, res: Response) => {
             where: { id: sessionId },
             data: { activeGroupId: activeGroupId || null },
           });
+          logger.debug('Session updated', { requestId, operation: 'saveState', details: { sessionId } });
         } else {
           await tx.session.create({
             data: {
@@ -114,6 +161,7 @@ router.post('/', async (req: Request, res: Response) => {
               createdAt: BigInt(Date.now()),
             },
           });
+          logger.debug('Session created', { requestId, operation: 'saveState', details: { sessionId } });
         }
       }
 
@@ -133,6 +181,7 @@ router.post('/', async (req: Request, res: Response) => {
                 settings: agent.settings,
               },
             });
+            agentsUpdated++;
           } else {
             await tx.agent.create({
               data: {
@@ -146,6 +195,7 @@ router.post('/', async (req: Request, res: Response) => {
                 settings: agent.settings,
               },
             });
+            agentsCreated++;
           }
         }
       }
@@ -162,6 +212,7 @@ router.post('/', async (req: Request, res: Response) => {
                 sessionId: group.sessionId,
               },
             });
+            groupsUpdated++;
           } else {
             await tx.group.create({
               data: {
@@ -171,6 +222,7 @@ router.post('/', async (req: Request, res: Response) => {
                 createdAt: BigInt(group.createdAt),
               },
             });
+            groupsCreated++;
           }
 
           // Update group agents
@@ -195,13 +247,17 @@ router.post('/', async (req: Request, res: Response) => {
         for (const message of messages) {
           // Skip messages with invalid groupId (group doesn't exist)
           if (message.groupId && !validGroupIds.has(message.groupId)) {
-            console.warn(`[State] Skipping message ${message.id}: invalid groupId ${message.groupId}`);
+            logger.warn('Skipping message with invalid groupId', { 
+              requestId, 
+              operation: 'saveState',
+              details: { messageId: message.id, invalidGroupId: message.groupId }
+            });
+            messagesSkipped++;
             continue;
           }
           
           const existingMessage = await tx.message.findUnique({ where: { id: message.id } });
           if (!existingMessage) {
-            console.log(`[State] Creating new message: ${message.id}, content length: ${message.content?.length || 0}, status: ${message.status}`);
             await tx.message.create({
               data: {
                 id: message.id,
@@ -216,6 +272,7 @@ router.post('/', async (req: Request, res: Response) => {
                 error: message.error || null,
               },
             });
+            messagesCreated++;
           } else {
             // Update existing message - this handles cases where message was created with empty content
             // (e.g., "sending" status) and later updated with actual content (e.g., "sent" status)
@@ -224,7 +281,6 @@ router.post('/', async (req: Request, res: Response) => {
             const hasErrorChanged = existingMessage.error !== (message.error || null);
             
             if (hasContentChanged || hasStatusChanged || hasErrorChanged) {
-              console.log(`[State] Updating message: ${message.id}, content changed: ${hasContentChanged} (old: "${existingMessage.content?.substring(0, 50)}...", new: "${message.content?.substring(0, 50)}..."), status changed: ${hasStatusChanged} (old: ${existingMessage.status}, new: ${message.status})`);
               await tx.message.update({
                 where: { id: message.id },
                 data: {
@@ -233,27 +289,59 @@ router.post('/', async (req: Request, res: Response) => {
                   error: message.error || null,
                 },
               });
+              messagesUpdated++;
             }
           }
         }
       }
     });
 
+    const duration = Date.now() - startTime;
+    logger.info('State saved', { 
+      requestId, 
+      operation: 'saveState', 
+      duration,
+      details: { 
+        agentsCreated, 
+        agentsUpdated, 
+        groupsCreated, 
+        groupsUpdated, 
+        messagesCreated, 
+        messagesUpdated,
+        messagesSkipped,
+        sessionId,
+        activeGroupId
+      }
+    });
+
     res.json({ success: true });
   } catch (error) {
-    console.error('Error saving state:', error);
+    logger.error('Failed to save state', { 
+      requestId, 
+      operation: 'saveState',
+      error: error as Error,
+      details: { sessionId }
+    });
     res.status(500).json({ success: false, error: 'Failed to save state' });
   }
 });
 
 // Update active group
 router.patch('/active-group', async (req: Request, res: Response) => {
+  const requestId = (req as any).requestId;
+  const { activeGroupId, sessionId } = req.body;
+  
   try {
-    const { activeGroupId, sessionId } = req.body;
-
     if (!sessionId) {
+      logger.warn('sessionId required for updating active group', { requestId, operation: 'updateActiveGroup' });
       return res.status(400).json({ success: false, error: 'sessionId is required' });
     }
+
+    logger.debug('Updating active group', { 
+      requestId, 
+      operation: 'updateActiveGroup',
+      details: { sessionId, activeGroupId }
+    });
 
     const session = await prisma.session.findUnique({ where: { id: sessionId } });
     if (session) {
@@ -263,9 +351,20 @@ router.patch('/active-group', async (req: Request, res: Response) => {
       });
     }
 
+    logger.info('Active group updated', { 
+      requestId, 
+      operation: 'updateActiveGroup',
+      details: { sessionId, activeGroupId }
+    });
+
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating active group:', error);
+    logger.error('Failed to update active group', { 
+      requestId, 
+      operation: 'updateActiveGroup',
+      error: error as Error,
+      details: { sessionId }
+    });
     res.status(500).json({ success: false, error: 'Failed to update active group' });
   }
 });

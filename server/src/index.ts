@@ -1,7 +1,8 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDatabase } from './db/client';
+import logger from './utils/logger';
 
 // Routes
 import agentsRouter from './routes/agents';
@@ -18,9 +19,26 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+// Enhanced request logging middleware with timing
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const requestId = logger.generateRequestId();
+  const startTime = Date.now();
+  
+  // Attach requestId to request for use in route handlers
+  (req as any).requestId = requestId;
+  
+  // Skip body logging for state endpoint (body is too large)
+  const skipBody = req.path.startsWith('/api/v1/state');
+  
+  // Log request
+  logger.logRequest(req, requestId, { skipBody });
+  
+  // Log response when finished
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    logger.logResponse(req, res, duration, requestId);
+  });
+  
   next();
 });
 
@@ -37,12 +55,20 @@ app.get('/health', (req, res) => {
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
+  const requestId = (req as any).requestId;
+  logger.error('Unhandled error', {
+    requestId,
+    error: err,
+    stack: err.stack,
+    details: { path: req.path, method: req.method },
+  });
   res.status(500).json({ success: false, error: 'Internal server error' });
 });
 
 // 404 handler
-app.use((req, res) => {
+app.use((req: express.Request, res: express.Response) => {
+  const requestId = (req as any).requestId;
+  logger.warn(`Route not found: ${req.method} ${req.path}`, { requestId });
   res.status(404).json({ success: false, error: 'Not found' });
 });
 
@@ -52,19 +78,25 @@ async function start() {
     await connectDatabase();
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📋 API endpoints:`);
-      console.log(`   GET  /api/v1/state        - Get full state`);
-      console.log(`   POST /api/v1/state        - Save full state`);
-      console.log(`   GET  /api/v1/agents       - List agents`);
-      console.log(`   POST /api/v1/agents       - Create agent`);
-      console.log(`   GET  /api/v1/groups       - List groups`);
-      console.log(`   POST /api/v1/groups       - Create group`);
-      console.log(`   GET  /api/v1/messages     - List messages`);
-      console.log(`   POST /api/v1/messages     - Create message`);
+      logger.info(`Server ready`, {
+        details: {
+          url: `http://localhost:${PORT}`,
+          endpoints: [
+            { method: 'GET', path: '/api/v1/state', description: 'Get full state' },
+            { method: 'POST', path: '/api/v1/state', description: 'Save full state' },
+            { method: 'GET', path: '/api/v1/agents', description: 'List agents' },
+            { method: 'POST', path: '/api/v1/agents', description: 'Create agent' },
+            { method: 'GET', path: '/api/v1/groups', description: 'List groups' },
+            { method: 'POST', path: '/api/v1/groups', description: 'Create group' },
+            { method: 'GET', path: '/api/v1/messages', description: 'List messages' },
+            { method: 'POST', path: '/api/v1/messages', description: 'Create message' },
+            { method: 'GET', path: '/health', description: 'Health check' },
+          ],
+        },
+      });
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server', { error: error as Error });
     process.exit(1);
   }
 }

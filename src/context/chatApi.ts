@@ -1,4 +1,5 @@
 import { Agent, Usage } from '../types';
+import { callAgent as serverCallAgent } from '../services/api';
 
 // Custom error class for timeout
 export class TimeoutError extends Error {
@@ -16,109 +17,30 @@ export class RetriesExhaustedError extends Error {
   }
 }
 
-export interface CallAgentApiOptions {
-  timeout?: number;
-  maxRetries?: number;
-  retryDelay?: number;
-  signal?: AbortSignal;
-}
-
 export interface AgentApiResponse {
   content: string;
   usage?: Usage;
 }
 
+/**
+ * Call the agent API through the server (server-side proxy)
+ * This moves the AI API call from frontend to backend for security
+ */
 export async function callAgentApi(
   agent: Agent,
   sessionId: string,
-  userMessage: string,
-  options: CallAgentApiOptions = {}
+  userMessage: string
 ): Promise<AgentApiResponse> {
-  const settings = agent.settings;
-  const timeout = options.timeout ?? settings.timeout;
-  const maxRetries = options.maxRetries ?? settings.maxRetries;
-  const retryDelay = options.retryDelay ?? settings.retryDelay;
-
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-      
-      // If external signal provided, combine with our controller
-      const signal = options.signal 
-        ? AbortSignal.any([controller.signal, options.signal])
-        : controller.signal;
-
-      const response = await fetch(agent.endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${agent.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: agent.model,
-          messages: [
-            {
-              session_id: sessionId,
-              role: 'user',
-              content: userMessage,
-            },
-          ],
-        }),
-        signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        // Don't retry on client errors (4xx)
-        if (response.status >= 400 && response.status < 500) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        // Server errors (5xx) - retry
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || 'No response';
-      const usage = data.usage;
-      return { content, usage };
-
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      
-      // Don't retry on abort (unless it's our timeout)
-      if (lastError.name === 'AbortError') {
-        // Check if we should retry based on whether it's a timeout
-        if (attempt < maxRetries) {
-          await sleep(retryDelay * (attempt + 1)); // Exponential backoff
-          continue;
-        }
-        throw new TimeoutError();
-      }
-
-      // Don't retry on client errors
-      if (lastError.message.includes('HTTP 4')) {
-        throw lastError;
-      }
-
-      // Retry on network errors, server errors, or timeout
-      if (attempt < maxRetries) {
-        // Exponential backoff
-        await sleep(retryDelay * Math.pow(2, attempt));
-      }
-    }
+  const response = await serverCallAgent(agent.id, sessionId, userMessage);
+  
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to call agent');
   }
-
-  throw new RetriesExhaustedError(lastError?.message || 'Max retries reached');
-}
-
-// Helper function for sleep
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  
+  return {
+    content: response.data?.content || 'No response',
+    usage: response.data?.usage,
+  };
 }
 
 // Test connection to an agent

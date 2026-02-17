@@ -2,7 +2,7 @@ import { Agent, Group, Message, defaultAgentSettings, AgentSettings } from '../t
 import { generateUUID } from '../hooks/useLocalStorage';
 import { Dispatch } from 'react';
 import { ChatAction } from '../types';
-import { deleteGroup as apiDeleteGroup } from '../services/api';
+import { deleteGroup as apiDeleteGroup, deleteAgent as apiDeleteAgent } from '../services/api';
 
 export function createAddAgent(dispatch: Dispatch<ChatAction>) {
   return (agentData: Omit<Agent, 'id' | 'createdAt'>) => {
@@ -23,8 +23,15 @@ export function createUpdateAgent(dispatch: Dispatch<ChatAction>) {
 }
 
 export function createDeleteAgent(dispatch: Dispatch<ChatAction>) {
-  return (id: string) => {
+  return async (id: string) => {
     dispatch({ type: 'DELETE_AGENT', payload: id });
+    
+    // Call API to delete agent from server
+    try {
+      await apiDeleteAgent(id);
+    } catch (error) {
+      console.error('Failed to delete agent on server:', error);
+    }
   };
 }
 

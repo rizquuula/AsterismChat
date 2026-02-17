@@ -1,4 +1,4 @@
-import { Agent, Group, Message, ChatState } from '../types';
+import { Agent, Group, Message, ChatState, Usage } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -6,6 +6,11 @@ interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+interface CallAgentResponse {
+  content: string;
+  usage?: Usage;
 }
 
 async function fetchApi<T>(
@@ -169,4 +174,16 @@ export async function checkHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// Call agent API (server-side)
+export async function callAgent(
+  agentId: string,
+  sessionId: string,
+  message: string
+): Promise<ApiResponse<CallAgentResponse>> {
+  return fetchApi<CallAgentResponse>(`/api/v1/agents/${agentId}/chat`, {
+    method: 'POST',
+    body: JSON.stringify({ sessionId, message }),
+  });
 }

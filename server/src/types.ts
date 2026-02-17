@@ -6,6 +6,12 @@ export interface AgentSettings {
   autoResponse: boolean;
 }
 
+export interface Usage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 export interface Agent {
   id: string;
   name: string;

@@ -18,4 +18,7 @@ router.put('/:id', agentsController.update);
 // Delete agent
 router.delete('/:id', agentsController.delete);
 
+// Call agent with a message
+router.post('/:id/chat', agentsController.callAgent);
+
 export default router;

@@ -183,4 +183,52 @@ export const agentsController = {
       res.status(500).json({ success: false, error: 'Failed to delete agent' });
     }
   },
+
+  /**
+   * POST /agents/:id/chat - Call an agent with a message
+   */
+  async callAgent(req: Request, res: Response) {
+    const requestId = (req as any).requestId;
+    const startTime = Date.now();
+    const { id: agentId } = req.params;
+    const { sessionId, message } = req.body;
+
+    if (!sessionId || !message) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'sessionId and message are required' 
+      });
+    }
+
+    try {
+      logger.debug('Calling agent', {
+        requestId,
+        operation: 'callAgent',
+        details: { agentId, sessionId, messageLength: message.length },
+      });
+
+      const result = await agentsService.callAgent(agentId, sessionId, message);
+
+      const duration = Date.now() - startTime;
+      logger.info('Agent called successfully', {
+        requestId,
+        operation: 'callAgent',
+        duration,
+        details: { agentId, sessionId },
+      });
+
+      res.json({ success: true, data: result });
+    } catch (error) {
+      logger.error('Failed to call agent', {
+        requestId,
+        operation: 'callAgent',
+        error: error as Error,
+        details: { agentId, sessionId },
+      });
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to call agent' 
+      });
+    }
+  },
 };

@@ -56,6 +56,7 @@ model Message {
   status     String
   targets    Json?
   error      String?
+  usage      Json?
 
   group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 

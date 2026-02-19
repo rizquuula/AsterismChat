@@ -37,23 +37,12 @@ async function fetchApi<T>(
   }
 }
 
-// State API
-export async function getState(): Promise<ApiResponse<ChatState>> {
-  return fetchApi<ChatState>('/api/v1/state');
-}
-
-export async function saveState(state: ChatState): Promise<ApiResponse<void>> {
-  return fetchApi<void>('/api/v1/state', {
-    method: 'POST',
-    body: JSON.stringify(state),
-  });
-}
-
+// Session API
 export async function updateActiveGroup(
   activeGroupId: string | null,
   sessionId: string
 ): Promise<ApiResponse<void>> {
-  return fetchApi<void>('/api/v1/state/active-group', {
+  return fetchApi<void>('/api/v1/session/active-group', {
     method: 'PATCH',
     body: JSON.stringify({ activeGroupId, sessionId }),
   });
@@ -161,7 +150,7 @@ export async function deleteMessage(id: string): Promise<ApiResponse<void>> {
 }
 
 export async function clearMessages(sessionId: string): Promise<ApiResponse<void>> {
-  return fetchApi<void>(`/api/v1/messages?sessionId=${encodeURIComponent(sessionId)}`, {
+  return fetchApi<void>(`/api/v1/messages/clear/session?sessionId=${encodeURIComponent(sessionId)}`, {
     method: 'DELETE',
   });
 }

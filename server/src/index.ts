@@ -8,7 +8,7 @@ import logger from './utils/logger';
 import agentsRouter from './routes/agents';
 import groupsRouter from './routes/groups';
 import messagesRouter from './routes/messages';
-import stateRouter from './routes/state';
+import sessionRouter from './routes/session';
 
 dotenv.config();
 
@@ -27,8 +27,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Attach requestId to request for use in route handlers
   (req as any).requestId = requestId;
   
-  // Skip body logging for state endpoint (body is too large)
-  const skipBody = req.path.startsWith('/api/v1/state');
+  // Skip body logging for large payloads
+  const skipBody = req.path.startsWith('/api/v1/agents') && req.method === 'POST';
   
   // Log request
   logger.logRequest(req, requestId, { skipBody });
@@ -46,7 +46,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use('/api/v1/agents', agentsRouter);
 app.use('/api/v1/groups', groupsRouter);
 app.use('/api/v1/messages', messagesRouter);
-app.use('/api/v1/state', stateRouter);
+app.use('/api/v1/session', sessionRouter);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -82,14 +82,13 @@ async function start() {
         details: {
           url: `http://localhost:${PORT}`,
           endpoints: [
-            { method: 'GET', path: '/api/v1/state', description: 'Get full state' },
-            { method: 'POST', path: '/api/v1/state', description: 'Save full state' },
             { method: 'GET', path: '/api/v1/agents', description: 'List agents' },
             { method: 'POST', path: '/api/v1/agents', description: 'Create agent' },
             { method: 'GET', path: '/api/v1/groups', description: 'List groups' },
             { method: 'POST', path: '/api/v1/groups', description: 'Create group' },
             { method: 'GET', path: '/api/v1/messages', description: 'List messages' },
             { method: 'POST', path: '/api/v1/messages', description: 'Create message' },
+            { method: 'PATCH', path: '/api/v1/session/active-group', description: 'Update active group' },
             { method: 'GET', path: '/health', description: 'Health check' },
           ],
         },

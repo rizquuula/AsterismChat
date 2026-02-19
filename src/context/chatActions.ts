@@ -2,10 +2,21 @@ import { Agent, Group, Message, defaultAgentSettings, AgentSettings } from '../t
 import { generateUUID } from '../hooks/useLocalStorage';
 import { Dispatch } from 'react';
 import { ChatAction } from '../types';
-import { deleteGroup as apiDeleteGroup, deleteAgent as apiDeleteAgent } from '../services/api';
+import { 
+  deleteGroup as apiDeleteGroup, 
+  deleteAgent as apiDeleteAgent,
+  createAgent as apiCreateAgent,
+  updateAgent as apiUpdateAgent,
+  createGroup as apiCreateGroup,
+  updateGroup as apiUpdateGroup,
+  updateActiveGroup as apiUpdateActiveGroup,
+  createMessage as apiCreateMessage,
+  updateMessage as apiUpdateMessage,
+  clearMessages as apiClearMessages,
+} from '../services/api';
 
 export function createAddAgent(dispatch: Dispatch<ChatAction>) {
-  return (agentData: Omit<Agent, 'id' | 'createdAt'>) => {
+  return async (agentData: Omit<Agent, 'id' | 'createdAt'>) => {
     const agent: Agent = {
       ...agentData,
       id: generateUUID(),
@@ -13,12 +24,26 @@ export function createAddAgent(dispatch: Dispatch<ChatAction>) {
       settings: agentData.settings || defaultAgentSettings,
     };
     dispatch({ type: 'ADD_AGENT', payload: agent });
+    
+    // Call API to create agent on server
+    try {
+      await apiCreateAgent(agentData);
+    } catch (error) {
+      console.error('Failed to create agent on server:', error);
+    }
   };
 }
 
 export function createUpdateAgent(dispatch: Dispatch<ChatAction>) {
-  return (agent: Agent) => {
+  return async (agent: Agent) => {
     dispatch({ type: 'UPDATE_AGENT', payload: agent });
+    
+    // Call API to update agent on server
+    try {
+      await apiUpdateAgent(agent);
+    } catch (error) {
+      console.error('Failed to update agent on server:', error);
+    }
   };
 }
 
@@ -36,22 +61,37 @@ export function createDeleteAgent(dispatch: Dispatch<ChatAction>) {
 }
 
 export function createAddGroup(dispatch: Dispatch<ChatAction>) {
-  return (name: string, agentIds: string[]): Group => {
+  return async (name: string, agentIds: string[], sessionId: string): Promise<Group> => {
     const group: Group = {
       id: generateUUID(),
       name,
       agentIds,
-      sessionId: generateUUID(),
+      sessionId,
       createdAt: Date.now(),
     };
     dispatch({ type: 'ADD_GROUP', payload: group });
+    
+    // Call API to create group on server
+    try {
+      await apiCreateGroup(name, agentIds, sessionId);
+    } catch (error) {
+      console.error('Failed to create group on server:', error);
+    }
+    
     return group;
   };
 }
 
 export function createUpdateGroup(dispatch: Dispatch<ChatAction>) {
-  return (group: Group) => {
+  return async (group: Group) => {
     dispatch({ type: 'UPDATE_GROUP', payload: group });
+    
+    // Call API to update group on server
+    try {
+      await apiUpdateGroup(group);
+    } catch (error) {
+      console.error('Failed to update group on server:', error);
+    }
   };
 }
 
@@ -73,20 +113,30 @@ export function createDeleteGroup(dispatch: Dispatch<ChatAction>, getGroups: () 
   };
 }
 
-export function createSetActiveGroup(dispatch: Dispatch<ChatAction>, getGroups: () => Group[]) {
-  return (id: string | null) => {
+export function createSetActiveGroup(dispatch: Dispatch<ChatAction>, getGroups: () => Group[], getSessionId: () => string) {
+  return async (id: string | null) => {
+    let sessionId = getSessionId();
+    
     if (id) {
       const group = getGroups().find(g => g.id === id);
       if (group) {
+        sessionId = group.sessionId;
         dispatch({ type: 'SET_SESSION_ID', payload: group.sessionId });
       }
     }
     dispatch({ type: 'SET_ACTIVE_GROUP', payload: id });
+    
+    // Call API to update active group on server
+    try {
+      await apiUpdateActiveGroup(id, sessionId);
+    } catch (error) {
+      console.error('Failed to update active group on server:', error);
+    }
   };
 }
 
 export function createAddMessage(dispatch: Dispatch<ChatAction>) {
-  return (messageData: Omit<Message, 'id' | 'timestamp'>): Message => {
+  return async (messageData: Omit<Message, 'id' | 'timestamp'>): Promise<Message> => {
     const message: Message = {
       ...messageData,
       groupId: messageData.groupId || '',
@@ -94,19 +144,42 @@ export function createAddMessage(dispatch: Dispatch<ChatAction>) {
       timestamp: Date.now(),
     };
     dispatch({ type: 'ADD_MESSAGE', payload: message });
+    
+    // Call API to create message on server
+    try {
+      await apiCreateMessage(messageData);
+    } catch (error) {
+      console.error('Failed to create message on server:', error);
+    }
+    
     return message;
   };
 }
 
 export function createUpdateMessage(dispatch: Dispatch<ChatAction>) {
-  return (id: string, updates: Partial<Message>) => {
+  return async (id: string, updates: Partial<Message>) => {
     dispatch({ type: 'UPDATE_MESSAGE', payload: { id, updates } });
+    
+    // Call API to update message on server
+    try {
+      await apiUpdateMessage(id, updates);
+    } catch (error) {
+      console.error('Failed to update message on server:', error);
+    }
   };
 }
 
-export function createClearMessages(dispatch: Dispatch<ChatAction>) {
-  return () => {
+export function createClearMessages(dispatch: Dispatch<ChatAction>, getSessionId: () => string) {
+  return async () => {
     dispatch({ type: 'CLEAR_MESSAGES' });
+    
+    // Call API to clear messages on server
+    try {
+      const sessionId = getSessionId();
+      await apiClearMessages(sessionId);
+    } catch (error) {
+      console.error('Failed to clear messages on server:', error);
+    }
   };
 }
 
@@ -140,21 +213,12 @@ export function createGetActiveGroupMessages(getState: () => { activeGroupId: st
   return (): Message[] => {
     const state = getState();
     
-    // If there's an active group, filter by group's sessionId
+    // If there's an active group, filter by groupId to isolate messages to that group
     if (state.activeGroupId) {
-      const group = state.groups.find(g => g.id === state.activeGroupId);
-      if (group) {
-        return state.messages.filter(m => m.sessionId === group.sessionId);
-      }
+      return state.messages.filter(m => m.groupId === state.activeGroupId);
     }
     
-    // If no active group, fall back to filtering by the global sessionId
-    // This handles the case where user is chatting without a selected group
-    if (state.sessionId) {
-      return state.messages.filter(m => m.sessionId === state.sessionId);
-    }
-    
-    // Last resort: return all messages (shouldn't happen in normal operation)
+    // If no active group, return all messages (user is chatting with all agents)
     return state.messages;
   };
 }

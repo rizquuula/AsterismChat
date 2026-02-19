@@ -17,7 +17,7 @@ import {
 } from './chatActions';
 import { callAgentApi } from './chatApi';
 import { createChatService } from './services/chatService';
-import { getState, saveState, checkHealth } from '../services/api';
+import { getAgents, getGroups, getMessages, checkHealth, updateActiveGroup } from '../services/api';
 
 interface ChatContextType {
   state: ChatState;
@@ -42,27 +42,9 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-// Debounce helper
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [isBackendAvailable, setIsBackendAvailable] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [initialStateLoaded, setInitialStateLoaded] = React.useState(false);
   
   // Persist sessionId in localStorage to maintain session across page refreshes
   const [storedSessionId, setStoredSessionId] = useLocalStorage('asterism-session-id', '');
@@ -87,35 +69,38 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setIsBackendAvailable(healthOk);
 
       if (healthOk) {
-        const response = await getState();
-        if (response.success && response.data) {
-          // Preserve the local sessionId to maintain session continuity across refreshes
-          const stateWithPreservedSession = {
-            ...response.data,
+        // Load individual endpoints in parallel
+        const [agentsRes, groupsRes, messagesRes] = await Promise.all([
+          getAgents(),
+          getGroups(),
+          getMessages(),
+        ]);
+
+        const agents = agentsRes.success && agentsRes.data ? agentsRes.data : [];
+        const groups = groupsRes.success && groupsRes.data ? groupsRes.data : [];
+        const messages = messagesRes.success && messagesRes.data ? messagesRes.data : [];
+
+        // Preserve the local sessionId to maintain session continuity across refreshes
+        dispatch({ 
+          type: 'LOAD_STATE', 
+          payload: {
+            agents,
+            groups,
+            messages,
+            activeGroupId: null,
             sessionId: initialSessionId,
-          };
-          dispatch({ type: 'LOAD_STATE', payload: stateWithPreservedSession });
-        }
+          }
+        });
+
+        // Create session on first load if no session exists
+        await updateActiveGroup(null, initialSessionId);
       }
       
       setIsLoading(false);
-      setInitialStateLoaded(true);
     }
 
     loadInitialState();
   }, [initialSessionId]);
-
-  // Debounce state for saving to backend
-  const debouncedState = useDebounce(state, 1000);
-
-  // Save state to backend when it changes (debounced)
-  useEffect(() => {
-    if (!initialStateLoaded || !isBackendAvailable) return;
-    
-    saveState(debouncedState).catch(err => {
-      console.error('Failed to save state to backend:', err);
-    });
-  }, [debouncedState, initialStateLoaded, isBackendAvailable]);
 
   // Create action creators with dependencies
   const addAgent = useCallback(createAddAgent(dispatch), [dispatch]);
@@ -124,10 +109,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const addGroup = useCallback(createAddGroup(dispatch), [dispatch]);
   const updateGroup = useCallback(createUpdateGroup(dispatch), [dispatch]);
   const deleteGroup = useCallback(createDeleteGroup(dispatch, () => state.groups), [dispatch, state.groups]);
-  const setActiveGroup = useCallback(createSetActiveGroup(dispatch, () => state.groups), [dispatch, state.groups]);
+  const setActiveGroup = useCallback(createSetActiveGroup(dispatch, () => state.groups, () => state.sessionId), [dispatch, state.groups, state.sessionId]);
   const addMessage = useCallback(createAddMessage(dispatch), [dispatch]);
   const updateMessage = useCallback(createUpdateMessage(dispatch), [dispatch]);
-  const clearMessages = useCallback(createClearMessages(dispatch), [dispatch]);
+  const clearMessages = useCallback(createClearMessages(dispatch, () => state.sessionId), [dispatch, state.sessionId]);
   
   const getActiveGroupMessages = useCallback(
     createGetActiveGroupMessages(() => ({ activeGroupId: state.activeGroupId, groups: state.groups, messages: state.messages, sessionId: state.sessionId })),

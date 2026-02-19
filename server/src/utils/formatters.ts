@@ -28,7 +28,6 @@ export async function formatGroup(group: any): Promise<Group> {
   return {
     id: group.id,
     name: group.name,
-    sessionId: group.sessionId,
     createdAt: Number(group.createdAt),
     agentIds: groupAgents.map((ga) => ga.agentId),
   };
@@ -42,7 +41,6 @@ export function formatGroupWithAgents(group: any, groupAgents: any[]): Group {
   return {
     id: group.id,
     name: group.name,
-    sessionId: group.sessionId,
     createdAt: Number(group.createdAt),
     agentIds: groupAgents.map((ga) => ga.agentId),
   };
@@ -55,7 +53,6 @@ export function formatMessage(message: any): Message {
   return {
     id: message.id,
     sessionId: message.sessionId,
-    groupId: message.groupId,
     content: message.content,
     sender: message.sender,
     senderName: message.senderName,

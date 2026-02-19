@@ -38,14 +38,19 @@ async function fetchApi<T>(
 }
 
 // Session API
-export async function updateActiveGroup(
-  activeGroupId: string | null,
-  sessionId: string
-): Promise<ApiResponse<void>> {
-  return fetchApi<void>('/api/v1/session/active-group', {
-    method: 'PATCH',
-    body: JSON.stringify({ activeGroupId, sessionId }),
+export async function createSession(
+  groupId: string
+): Promise<ApiResponse<{ sessionId: string; groupId: string }>> {
+  return fetchApi<{ sessionId: string; groupId: string }>('/api/v1/session', {
+    method: 'POST',
+    body: JSON.stringify({ groupId }),
   });
+}
+
+export async function getSession(
+  sessionId: string
+): Promise<ApiResponse<{ sessionId: string; activeGroupId: string | null }>> {
+  return fetchApi<{ sessionId: string; activeGroupId: string | null }>(`/api/v1/session/${sessionId}`);
 }
 
 // Agents API
@@ -90,12 +95,11 @@ export async function getGroup(id: string): Promise<ApiResponse<Group>> {
 
 export async function createGroup(
   name: string,
-  agentIds: string[],
-  sessionId: string
+  agentIds: string[]
 ): Promise<ApiResponse<Group>> {
   return fetchApi<Group>('/api/v1/groups', {
     method: 'POST',
-    body: JSON.stringify({ name, agentIds, sessionId }),
+    body: JSON.stringify({ name, agentIds }),
   });
 }
 
@@ -114,9 +118,9 @@ export async function deleteGroup(id: string): Promise<ApiResponse<void>> {
 
 // Messages API
 export async function getMessages(
-  sessionId?: string
+  groupId?: string
 ): Promise<ApiResponse<Message[]>> {
-  const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
+  const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
   return fetchApi<Message[]>(`/api/v1/messages${query}`);
 }
 

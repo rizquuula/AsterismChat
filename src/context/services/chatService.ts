@@ -22,14 +22,12 @@ interface ChatServiceDeps {
 export function createChatService(deps: ChatServiceDeps) {
   const { dispatch, getState, addMessage, updateMessage, updateAgent, updateGroup, addGroup, setActiveGroup } = deps;
 
-  const startNewSession = () => {
+  const startNewSession = async () => {
     const state = getState();
     const newSessionId = generateUUID();
-    const groupId = state.activeGroupId || '';
     
-    addMessage({
+    await addMessage({
       sessionId: state.sessionId,
-      groupId,
       content: `New chat session initialized with id "${newSessionId}"`,
       sender: 'system',
       senderName: 'System',
@@ -38,10 +36,13 @@ export function createChatService(deps: ChatServiceDeps) {
     
     dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
     
+    // Create new session in database if there's an active group
     if (state.activeGroupId) {
-      const group = state.groups.find(g => g.id === state.activeGroupId);
-      if (group) {
-        updateGroup({ ...group, sessionId: newSessionId });
+      try {
+        const { createSession } = await import('../../services/api');
+        await createSession(state.activeGroupId);
+      } catch (error) {
+        console.error('Failed to create session on server:', error);
       }
     }
   };
@@ -78,31 +79,26 @@ export function createChatService(deps: ChatServiceDeps) {
     // Get target agents from active group or all agents
     let targetAgentIds: string[];
     let sessionId: string;
-    let groupId: string;
 
     if (state.activeGroupId) {
       const group = state.groups.find(g => g.id === state.activeGroupId);
       if (!group) {
         targetAgentIds = state.agents.map(a => a.id);
         sessionId = state.sessionId;
-        groupId = '';
       } else {
         targetAgentIds = group.agentIds;
-        sessionId = group.sessionId;
-        groupId = group.id;
+        sessionId = state.sessionId;
       }
     } else {
       targetAgentIds = state.agents.map(a => a.id);
       sessionId = state.sessionId;
-      groupId = '';
     }
 
     if (targetAgentIds.length === 0) return;
 
     // Add user message
-    addMessage({
+    await addMessage({
       sessionId,
-      groupId,
       content,
       sender: 'user',
       senderName: 'You',
@@ -115,27 +111,20 @@ export function createChatService(deps: ChatServiceDeps) {
       const agent = state.agents.find(a => a.id === agentId);
       if (!agent) continue;
 
-      const pendingMessageId = generateUUID();
-      const timestamp = Date.now();
-
-      // Add placeholder for agent response
-      const pendingMessage: Message = {
-        id: pendingMessageId,
+      // Add placeholder for agent response - this also creates it in the database
+      const pendingMessage = await addMessage({
         sessionId,
-        groupId,
         content: '',
         sender: agentId,
         senderName: agent.name,
-        timestamp,
         status: 'sending',
         targets: [agentId],
-      };
-      dispatch({ type: 'ADD_MESSAGE', payload: pendingMessage });
+      });
 
       try {
         const { content: agentContent, usage } = await callAgentApi(agent, sessionId, content);
 
-        updateMessage(pendingMessageId, {
+        updateMessage(pendingMessage.id, {
           content: agentContent,
           status: 'sent',
           usage,
@@ -145,7 +134,7 @@ export function createChatService(deps: ChatServiceDeps) {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
-        updateMessage(pendingMessageId, {
+        updateMessage(pendingMessage.id, {
           content: '',
           status: 'error',
           error: errorMessage,

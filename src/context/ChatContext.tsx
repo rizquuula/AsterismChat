@@ -17,7 +17,7 @@ import {
 } from './chatActions';
 import { callAgentApi } from './chatApi';
 import { createChatService } from './services/chatService';
-import { getAgents, getGroups, getMessages, checkHealth, updateActiveGroup } from '../services/api';
+import { getAgents, getGroups, getMessages, checkHealth, createSession } from '../services/api';
 
 interface ChatContextType {
   state: ChatState;
@@ -70,15 +70,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       if (healthOk) {
         // Load individual endpoints in parallel
-        const [agentsRes, groupsRes, messagesRes] = await Promise.all([
+        const [agentsRes, groupsRes] = await Promise.all([
           getAgents(),
           getGroups(),
-          getMessages(),
         ]);
 
         const agents = agentsRes.success && agentsRes.data ? agentsRes.data : [];
         const groups = groupsRes.success && groupsRes.data ? groupsRes.data : [];
-        const messages = messagesRes.success && messagesRes.data ? messagesRes.data : [];
 
         // Preserve the local sessionId to maintain session continuity across refreshes
         dispatch({ 
@@ -86,14 +84,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           payload: {
             agents,
             groups,
-            messages,
+            messages: [],
             activeGroupId: null,
             sessionId: initialSessionId,
           }
         });
-
-        // Create session on first load if no session exists
-        await updateActiveGroup(null, initialSessionId);
       }
       
       setIsLoading(false);

@@ -38,31 +38,34 @@ export const groupsService = {
   async create(data: {
     name: string;
     agentIds?: string[];
-    sessionId?: string;
   }): Promise<Group> {
-    const sessionId = data.sessionId || crypto.randomUUID();
-
+    // First create the group
     const group = await prisma.group.create({
       data: {
         name: data.name,
-        sessionId,
         createdAt: BigInt(Date.now()),
-        ...(data.agentIds && data.agentIds.length > 0
-          ? {
-              groupAgents: {
-                create: data.agentIds.map((agentId) => ({
-                  agentId,
-                })),
-              },
-            }
-          : {}),
       },
+    });
+
+    // Then create GroupAgent records if agentIds are provided
+    if (data.agentIds && data.agentIds.length > 0) {
+      await prisma.groupAgent.createMany({
+        data: data.agentIds.map((agentId) => ({
+          groupId: group.id,
+          agentId,
+        })),
+      });
+    }
+
+    // Fetch the group with agents
+    const groupWithAgents = await prisma.group.findUnique({
+      where: { id: group.id },
       include: {
         agents: true,
       },
     });
 
-    return formatGroupWithAgents(group, group.agents);
+    return formatGroupWithAgents(groupWithAgents!, groupWithAgents!.agents);
   },
 
   /**
@@ -73,13 +76,11 @@ export const groupsService = {
     data: {
       name?: string;
       agentIds?: string[];
-      sessionId?: string;
     }
   ): Promise<Group | null> {
     // Update group basic info
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
-    if (data.sessionId !== undefined) updateData.sessionId = data.sessionId;
 
     const group = await prisma.group.update({
       where: { id },

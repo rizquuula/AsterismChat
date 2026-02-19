@@ -12,18 +12,17 @@ export const messagesController = {
   async getAll(req: Request, res: Response) {
     const requestId = (req as any).requestId;
     const startTime = Date.now();
-    const { sessionId, groupId } = req.query;
+    const { sessionId } = req.query;
 
     try {
       logger.debug('Fetching messages', {
         requestId,
         operation: 'getMessages',
-        details: { sessionId, groupId },
+        details: { sessionId },
       });
 
       const messages = await messagesService.findAll({
         sessionId: sessionId as string,
-        groupId: groupId as string,
       });
 
       const duration = Date.now() - startTime;
@@ -31,7 +30,7 @@ export const messagesController = {
         requestId,
         operation: 'getMessages',
         duration,
-        details: { count: messages.length, sessionId, groupId },
+        details: { count: messages.length, sessionId },
       });
 
       res.json({ success: true, data: messages });
@@ -86,18 +85,17 @@ export const messagesController = {
   async create(req: Request, res: Response) {
     const requestId = (req as any).requestId;
     const startTime = Date.now();
-    const { sessionId, groupId, content, sender, senderName, status, targets, usage } = req.body;
+    const { sessionId, content, sender, senderName, status, targets, usage } = req.body;
 
     try {
       logger.debug('Creating message', {
         requestId,
         operation: 'createMessage',
-        details: { sessionId, groupId, sender, status, contentLength: content?.length, hasUsage: !!usage },
+        details: { sessionId, sender, status, contentLength: content?.length, hasUsage: !!usage },
       });
 
       const message = await messagesService.create({
         sessionId,
-        groupId,
         content,
         sender,
         senderName,
@@ -120,7 +118,7 @@ export const messagesController = {
         requestId,
         operation: 'createMessage',
         error: error as Error,
-        details: { sessionId, groupId },
+        details: { sessionId },
       });
       res.status(500).json({ success: false, error: 'Failed to create message' });
     }

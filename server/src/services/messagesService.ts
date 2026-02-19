@@ -9,12 +9,10 @@ export const messagesService = {
   /**
    * Get all messages with optional filters
    */
-  async findAll(filters: { sessionId?: string; groupId?: string } = {}): Promise<Message[]> {
+  async findAll(filters: { sessionId?: string } = {}): Promise<Message[]> {
     const where: any = {};
     if (filters.sessionId) {
       where.sessionId = filters.sessionId;
-    } else if (filters.groupId) {
-      where.groupId = filters.groupId;
     }
 
     const messages = await prisma.message.findMany({
@@ -37,7 +35,6 @@ export const messagesService = {
    */
   async create(data: {
     sessionId: string;
-    groupId: string;
     content: string;
     sender: string;
     senderName: string;
@@ -48,7 +45,6 @@ export const messagesService = {
     const message = await prisma.message.create({
       data: {
         sessionId: data.sessionId,
-        groupId: data.groupId,
         content: data.content,
         sender: data.sender,
         senderName: data.senderName,
@@ -74,17 +70,34 @@ export const messagesService = {
       usage?: any;
     }
   ): Promise<Message | null> {
+    // First check if the message exists
+    const existingMessage = await prisma.message.findUnique({
+      where: { id },
+    });
+    
+    if (!existingMessage) {
+      console.error(`Message not found for update: ${id}`);
+      return null;
+    }
+
     const updateData: any = {};
     if (data.content !== undefined) updateData.content = data.content;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.error !== undefined) updateData.error = data.error || null;
     if (data.usage !== undefined) updateData.usage = data.usage || null;
 
-    const message = await prisma.message.update({
-      where: { id },
-      data: updateData,
-    });
-    return formatMessage(message);
+    try {
+      const message = await prisma.message.update({
+        where: { id },
+        data: updateData,
+      });
+      return formatMessage(message);
+    } catch (error: any) {
+      console.error(`Failed to update message ${id}:`, error.message);
+      console.error('Error code:', error.code);
+      console.error('Error meta:', error.meta);
+      throw error;
+    }
   },
 
   /**

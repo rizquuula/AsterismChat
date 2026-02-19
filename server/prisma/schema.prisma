@@ -25,11 +25,10 @@ model Agent {
 model Group {
   id        String   @id @default(uuid())
   name      String
-  sessionId String   @map("session_id")
   createdAt BigInt   @map("created_at")
 
   agents    GroupAgent[]
-  messages  Message[]
+  sessions  GroupSession[]
 
   @@map("groups")
 }
@@ -45,10 +44,21 @@ model GroupAgent {
   @@map("group_agents")
 }
 
+model GroupSession {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  sessionId String   @unique @map("session_id")
+  createdAt BigInt   @map("created_at")
+
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("group_sessions")
+}
+
 model Message {
   id         String   @id @default(uuid())
   sessionId  String   @map("session_id")
-  groupId    String   @map("group_id")
   content    String
   sender     String
   senderName String   @map("sender_name")
@@ -58,15 +68,14 @@ model Message {
   error      String?
   usage      Json?
 
-  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
   @@map("messages")
 }
 
 model Session {
   id            String   @id @default(uuid())
-  activeGroupId String?  @map("active_group_id")
   createdAt     BigInt   @map("created_at")
+
+  groupSessions GroupSession[]
 
   @@map("sessions")
 }

@@ -48,7 +48,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         groups: state.groups.filter((group) => group.id !== action.payload.id),
         activeGroupId: state.activeGroupId === action.payload.id ? null : state.activeGroupId,
-        messages: state.messages.filter((msg) => msg.groupId !== action.payload.id),
+        // Note: Messages are now filtered by session, not groupId
+        // When a group is deleted, messages remain but won't be displayed
+        // if there's no active group/session
       };
     case 'SET_ACTIVE_GROUP':
       return {

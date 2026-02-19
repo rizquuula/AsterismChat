@@ -78,16 +78,16 @@ export const groupsController = {
   async create(req: Request, res: Response) {
     const requestId = (req as any).requestId;
     const startTime = Date.now();
-    const { name, agentIds, sessionId } = req.body;
+    const { name, agentIds } = req.body;
 
     try {
       logger.debug('Creating group', {
         requestId,
         operation: 'createGroup',
-        details: { name, agentIds: agentIds?.length, sessionId },
+        details: { name, agentIds: agentIds?.length },
       });
 
-      const group = await groupsService.create({ name, agentIds, sessionId });
+      const group = await groupsService.create({ name, agentIds });
 
       const duration = Date.now() - startTime;
       logger.info('Group created', {
@@ -116,7 +116,7 @@ export const groupsController = {
     const requestId = (req as any).requestId;
     const startTime = Date.now();
     const { id } = req.params;
-    const { name, agentIds, sessionId } = req.body;
+    const { name, agentIds } = req.body;
 
     try {
       logger.debug('Updating group', {
@@ -125,7 +125,7 @@ export const groupsController = {
         details: { groupId: id, name },
       });
 
-      const group = await groupsService.update(id, { name, agentIds, sessionId });
+      const group = await groupsService.update(id, { name, agentIds });
 
       if (!group) {
         logger.warn('Group not found for update', { requestId, operation: 'updateGroup', details: { groupId: id } });

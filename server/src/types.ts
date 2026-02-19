@@ -27,14 +27,12 @@ export interface Group {
   id: string;
   name: string;
   agentIds: string[];
-  sessionId: string;
   createdAt: number;
 }
 
 export interface Message {
   id: string;
   sessionId: string;
-  groupId: string;
   content: string;
   sender: string;
   senderName: string;

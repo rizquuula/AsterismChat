@@ -30,7 +30,6 @@ export interface Group {
   id: string;
   name: string;
   agentIds: string[];
-  sessionId: string;
   createdAt: number;
 }
 
@@ -43,7 +42,6 @@ export interface Usage {
 export interface Message {
   id: string;
   sessionId: string;
-  groupId: string;
   content: string;
   sender: 'user' | 'system' | Agent['id'];
   senderName: string;

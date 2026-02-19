@@ -5,59 +5,115 @@ import logger from '../utils/logger';
 const router = Router();
 
 /**
- * PATCH /session/active-group - Update active group for a session
+ * POST /session - Create or get a session
  */
-router.patch('/active-group', async (req, res) => {
+router.post('/', async (req, res) => {
   const requestId = (req as any).requestId;
-  const { activeGroupId, sessionId } = req.body;
+  const { groupId } = req.body;
 
   try {
-    if (!sessionId) {
-      logger.warn('sessionId required for updating active group', { requestId, operation: 'updateActiveGroup' });
-      return res.status(400).json({ success: false, error: 'sessionId is required' });
+    if (!groupId) {
+      logger.warn('groupId required for creating session', { requestId, operation: 'createSession' });
+      return res.status(400).json({ success: false, error: 'groupId is required' });
     }
 
-    logger.debug('Updating active group', {
+    logger.debug('Creating session', {
       requestId,
-      operation: 'updateActiveGroup',
-      details: { sessionId, activeGroupId },
+      operation: 'createSession',
+      details: { groupId },
     });
 
-    // Check if session exists
-    const existingSession = await prisma.session.findUnique({ where: { id: sessionId } });
-    
-    if (existingSession) {
-      // Update existing session
-      await prisma.session.update({
-        where: { id: sessionId },
-        data: { activeGroupId: activeGroupId || null },
-      });
-    } else {
-      // Create new session with active group
-      await prisma.session.create({
+    // Generate new session ID
+    const sessionId = crypto.randomUUID();
+    const now = BigInt(Date.now());
+
+    // Create session and groupSession mapping in a transaction
+    await prisma.$transaction([
+      prisma.session.create({
         data: {
           id: sessionId,
-          activeGroupId: activeGroupId || null,
-          createdAt: BigInt(Date.now()),
+          createdAt: now,
         },
-      });
+      }),
+      prisma.groupSession.create({
+        data: {
+          group: {
+            connect: {
+              id: groupId,
+            },
+          },
+          session: {
+            connect: {
+              id: sessionId,
+            },
+          },
+          createdAt: now,
+        },
+      }),
+    ]);
+
+    logger.info('Session created', {
+      requestId,
+      operation: 'createSession',
+      details: { sessionId, groupId },
+    });
+
+    res.json({ success: true, data: { sessionId, groupId } });
+  } catch (error) {
+    logger.error('Failed to create session', {
+      requestId,
+      operation: 'createSession',
+      error: error as Error,
+    });
+    res.status(500).json({ success: false, error: 'Failed to create session' });
+  }
+});
+
+/**
+ * GET /session/:sessionId - Get session by ID
+ */
+router.get('/:sessionId', async (req, res) => {
+  const requestId = (req as any).requestId;
+  const { sessionId } = req.params;
+
+  try {
+    logger.debug('Fetching session', { requestId, operation: 'getSession', details: { sessionId } });
+
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        groupSessions: {
+          include: {
+            group: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      logger.warn('Session not found', { requestId, operation: 'getSession', details: { sessionId } });
+      return res.status(404).json({ success: false, error: 'Session not found' });
     }
 
-    logger.info('Active group updated', {
+    // Get the most recent group (if any)
+    const latestGroupSession = session.groupSessions[0];
+    const activeGroupId = latestGroupSession?.groupId || null;
+
+    logger.info('Session fetched', {
       requestId,
-      operation: 'updateActiveGroup',
+      operation: 'getSession',
       details: { sessionId, activeGroupId },
     });
 
-    res.json({ success: true });
+    res.json({ success: true, data: { sessionId, activeGroupId } });
   } catch (error) {
-    logger.error('Failed to update active group', {
+    logger.error('Failed to fetch session', {
       requestId,
-      operation: 'updateActiveGroup',
+      operation: 'getSession',
       error: error as Error,
       details: { sessionId },
     });
-    res.status(500).json({ success: false, error: 'Failed to update active group' });
+    res.status(500).json({ success: false, error: 'Failed to fetch session' });
   }
 });
 

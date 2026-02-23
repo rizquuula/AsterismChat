@@ -124,8 +124,6 @@ export function createSetActiveGroup(dispatch: Dispatch<ChatAction>, getGroups: 
     }
     currentAbortController = new AbortController();
 
-    const currentSessionId = getSessionId();
-    
     dispatch({ type: 'SET_ACTIVE_GROUP', payload: id });
     
     if (id) {
@@ -135,24 +133,22 @@ export function createSetActiveGroup(dispatch: Dispatch<ChatAction>, getGroups: 
         if (sessionsResponse.success && sessionsResponse.data && sessionsResponse.data.length > 0) {
           const existingSessionId = sessionsResponse.data[0].sessionId;
           
-          if (existingSessionId !== currentSessionId) {
-            dispatch({ type: 'SET_SESSION_ID', payload: existingSessionId });
-            
-            setLoadingMessages?.(true);
-            
-            try {
-              const messagesResponse = await apiGetMessages(existingSessionId);
-              if (messagesResponse.success && messagesResponse.data) {
-                dispatch({ type: 'CLEAR_MESSAGES' });
-                for (const msg of messagesResponse.data) {
-                  dispatch({ type: 'ADD_MESSAGE', payload: msg });
-                }
+          dispatch({ type: 'SET_SESSION_ID', payload: existingSessionId });
+          
+          setLoadingMessages?.(true);
+          
+          try {
+            const messagesResponse = await apiGetMessages(existingSessionId);
+            if (messagesResponse.success && messagesResponse.data) {
+              dispatch({ type: 'CLEAR_MESSAGES' });
+              for (const msg of messagesResponse.data) {
+                dispatch({ type: 'ADD_MESSAGE', payload: msg });
               }
-            } catch (msgError) {
-              console.error('Failed to load messages for existing session:', msgError);
-            } finally {
-              setLoadingMessages?.(false);
             }
+          } catch (msgError) {
+            console.error('Failed to load messages for existing session:', msgError);
+          } finally {
+            setLoadingMessages?.(false);
           }
         } else {
           await apiCreateSession(id);

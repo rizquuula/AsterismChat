@@ -242,7 +242,7 @@ export function createStartNewSession(dispatch: Dispatch<ChatAction>, getState: 
     if (state.activeGroupId) {
       const group = state.groups.find(g => g.id === state.activeGroupId);
       if (group) {
-        updateGroup({ ...group, sessionId: newSessionId });
+        dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
       }
     }
   };

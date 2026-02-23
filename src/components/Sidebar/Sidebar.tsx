@@ -19,8 +19,8 @@ export function Sidebar({ onAddAgent, onEditAgent, onDeleteAgent }: SidebarProps
   const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
 
-  const handleCreateGroup = (name: string, agentIds: string[]) => {
-    const group = addGroup(name, agentIds);
+  const handleCreateGroup = async (name: string, agentIds: string[]) => {
+    const group = await addGroup(name, agentIds);
     setActiveGroup(group.id);
   };
 
@@ -37,8 +37,8 @@ export function Sidebar({ onAddAgent, onEditAgent, onDeleteAgent }: SidebarProps
     }
   };
 
-  const handleAgentChat = (agentId: string) => {
-    createGroupForAgent(agentId);
+  const handleAgentChat = async (agentId: string) => {
+    await createGroupForAgent(agentId);
   };
 
   const groupToDelete = groups.find(g => g.id === deletingGroupId);

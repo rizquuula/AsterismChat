@@ -25,15 +25,15 @@ interface ChatContextType {
   addAgent: (agent: Omit<Agent, 'id' | 'createdAt'>) => void;
   updateAgent: (agent: Agent) => void;
   deleteAgent: (id: string) => void;
-  addGroup: (name: string, agentIds: string[]) => Group;
+  addGroup: (name: string, agentIds: string[]) => Promise<Group>;
   updateGroup: (group: Group) => void;
   deleteGroup: (id: string) => void;
   setActiveGroup: (id: string | null) => void;
-  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
+  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => Promise<Message>;
   updateMessage: (id: string, updates: Partial<Message>) => void;
   clearMessages: () => void;
   sendMessage: (content: string) => Promise<void>;
-  createGroupForAgent: (agentId: string) => Group | null;
+  createGroupForAgent: (agentId: string) => Promise<Group | null>;
   startNewSession: () => void;
   getActiveGroupMessages: () => Message[];
   isBackendAvailable: boolean;

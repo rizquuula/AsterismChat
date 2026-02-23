@@ -11,11 +11,11 @@ interface AgentApiResponse {
 interface ChatServiceDeps {
   dispatch: Dispatch<ChatAction>;
   getState: () => ChatState;
-  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => Message;
+  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => Promise<Message>;
   updateMessage: (id: string, updates: Partial<Message>) => void;
   updateAgent: (agent: Agent) => void;
   updateGroup: (group: Group) => void;
-  addGroup: (name: string, agentIds: string[]) => Group;
+  addGroup: (name: string, agentIds: string[]) => Promise<Group>;
   setActiveGroup: (id: string | null) => void;
 }
 
@@ -47,7 +47,7 @@ export function createChatService(deps: ChatServiceDeps) {
     }
   };
 
-  const createGroupForAgent = (agentId: string): Group | null => {
+  const createGroupForAgent = async (agentId: string): Promise<Group | null> => {
     const state = getState();
     const agent = state.agents.find(a => a.id === agentId);
     if (!agent) return null;
@@ -62,7 +62,7 @@ export function createChatService(deps: ChatServiceDeps) {
     }
 
     const groupName = `${agent.name}'s Chat`;
-    const group = addGroup(groupName, [agentId]);
+    const group = await addGroup(groupName, [agentId]);
     setActiveGroup(group.id);
     return group;
   };

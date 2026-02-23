@@ -4,10 +4,11 @@ import { updateAsterismConfig } from '../../services/api';
 interface ConfigTreeProps {
   data: unknown;
   path: string;
+  agentId: string;
   onUpdate: () => void;
 }
 
-export function ConfigTree({ data, path, onUpdate }: ConfigTreeProps) {
+export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editValue, setEditValue] = useState<string>('');
@@ -33,7 +34,7 @@ export function ConfigTree({ data, path, onUpdate }: ConfigTreeProps) {
         parsedValue = Number(editValue);
       }
       
-      const result = await updateAsterismConfig(path, parsedValue);
+      const result = await updateAsterismConfig(agentId, path, parsedValue);
       if (result.success) {
         onUpdate();
       } else {
@@ -90,6 +91,7 @@ export function ConfigTree({ data, path, onUpdate }: ConfigTreeProps) {
                 item={item}
                 index={index}
                 parentPath={`${path}[${index}]`}
+                agentId={agentId}
                 onUpdate={onUpdate}
               />
             ))}
@@ -126,6 +128,7 @@ export function ConfigTree({ data, path, onUpdate }: ConfigTreeProps) {
                 key={key}
                 data={value}
                 path={path ? `${path}.${key}` : key}
+                agentId={agentId}
                 onUpdate={onUpdate}
               />
             ))}
@@ -201,10 +204,11 @@ interface ArrayItemCardProps {
   item: unknown;
   index: number;
   parentPath: string;
+  agentId: string;
   onUpdate: () => void;
 }
 
-function ArrayItemCard({ item, index, parentPath, onUpdate }: ArrayItemCardProps) {
+function ArrayItemCard({ item, index, parentPath, agentId, onUpdate }: ArrayItemCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   if (typeof item === 'object' && item !== null) {
@@ -235,6 +239,7 @@ function ArrayItemCard({ item, index, parentPath, onUpdate }: ArrayItemCardProps
                 key={key}
                 data={value}
                 path={`${parentPath}.${key}`}
+                agentId={agentId}
                 onUpdate={onUpdate}
               />
             ))}

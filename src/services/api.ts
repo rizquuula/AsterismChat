@@ -188,15 +188,16 @@ export async function callAgent(
 }
 
 // Asterism Config API
-export async function getAsterismConfig(): Promise<ApiResponse<AsterismConfig>> {
-  return fetchApi<AsterismConfig>('/api/v1/asterism/config');
+export async function getAsterismConfig(agentId: string): Promise<ApiResponse<AsterismConfig>> {
+  return fetchApi<AsterismConfig>(`/api/v1/asterism/config?agentId=${encodeURIComponent(agentId)}`);
 }
 
 export async function updateAsterismConfig(
+  agentId: string,
   key: string,
   value: unknown
 ): Promise<ApiResponse<unknown>> {
-  return fetchApi<unknown>('/api/v1/asterism/config', {
+  return fetchApi<unknown>(`/api/v1/asterism/config?agentId=${encodeURIComponent(agentId)}`, {
     method: 'PUT',
     body: JSON.stringify({ key, value }),
   });

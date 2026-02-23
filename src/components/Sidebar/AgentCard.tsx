@@ -7,10 +7,13 @@ interface AgentCardProps {
   onClick: () => void;
   onDelete: () => void;
   onChat: () => void;
-  onConfig: () => void;
+  onConfig: (agentId: string) => void;
 }
 
 export function AgentCard({ agent, onClick, onDelete, onChat, onConfig }: AgentCardProps) {
+  const handleConfigClick = () => {
+    onConfig(agent.id);
+  };
   const formatLastResponse = (timestamp?: number) => {
     if (!timestamp) return 'No responses yet';
     const diff = Date.now() - timestamp;
@@ -40,7 +43,7 @@ export function AgentCard({ agent, onClick, onDelete, onChat, onConfig }: AgentC
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onConfig();
+            handleConfigClick();
           }}
           className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 rounded-lg"
           title="View/Edit config"

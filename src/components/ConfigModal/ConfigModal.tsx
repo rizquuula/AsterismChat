@@ -8,19 +8,25 @@ import { ConfigTree } from './ConfigTree';
 interface ConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
+  agentId: string | null;
 }
 
-export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
+export function ConfigModal({ isOpen, onClose, agentId }: ConfigModalProps) {
   const [config, setConfig] = useState<AsterismConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   const fetchConfig = useCallback(async () => {
+    if (!agentId) {
+      setError('No agent selected');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     
-    const result = await getAsterismConfig();
+    const result = await getAsterismConfig(agentId);
     
     if (isMountedRef.current) {
       if (result.success && result.data) {
@@ -30,17 +36,17 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       }
       setIsLoading(false);
     }
-  }, []);
+  }, [agentId]);
 
   React.useEffect(() => {
     isMountedRef.current = true;
-    if (isOpen) {
+    if (isOpen && agentId) {
       fetchConfig();
     }
     return () => {
       isMountedRef.current = false;
     };
-  }, [isOpen, fetchConfig]);
+  }, [isOpen, agentId, fetchConfig]);
 
   const handleRefresh = async () => {
     await fetchConfig();
@@ -66,7 +72,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
           <div className="flex gap-2">
             <button
               onClick={handleRefresh}
-              disabled={isLoading}
+              disabled={isLoading || !agentId}
               className="p-2 text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 rounded-lg transition-colors disabled:opacity-50"
               title="Refresh config"
             >
@@ -87,11 +93,12 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : config ? (
+        ) : config && agentId ? (
           <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
             <ConfigTree
               data={config}
               path=""
+              agentId={agentId}
               onUpdate={handleSave}
             />
           </div>

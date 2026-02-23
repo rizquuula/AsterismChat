@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import logger from '../utils/logger';
+import { agentsService } from '../services/agentsService';
 
-const ASTERISM_BASE_URL = process.env.ASTERISM_API_URL || 'http://localhost:20820';
 const FETCH_TIMEOUT_MS = 5000;
 
 interface ConfigUpdateBody {
@@ -14,12 +14,22 @@ interface FetchError extends Error {
   cause?: Error;
 }
 
+function extractBaseUrl(endpoint: string): string {
+  try {
+    const url = new URL(endpoint);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    logger.warn('Failed to parse endpoint URL, using as-is', { details: { endpoint } });
+    return endpoint;
+  }
+}
+
 function buildVerboseErrorMessage(url: string, error: unknown): string {
   const err = error as FetchError;
   const cause = err.cause;
   
   if (err.code === 'ECONNREFUSED') {
-    return `Connection refused (ECONNREFUSED) when connecting to ${url}. Is the asterism service running on port 20820?`;
+    return `Connection refused (ECONNREFUSED) when connecting to ${url}. Is the asterism service running?`;
   }
   
   if (err.code === 'ENOTFOUND') {
@@ -64,10 +74,30 @@ async function fetchWithTimeout(
 export const asterismController = {
   async getConfig(req: Request, res: Response): Promise<void> {
     const requestId = (req as any).requestId;
-    const url = `${ASTERISM_BASE_URL}/asterism/config`;
+    const agentId = req.query.agentId as string;
+    
+    if (!agentId) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Missing required query parameter: agentId' 
+      });
+      return;
+    }
+    
+    const agent = await agentsService.findById(agentId);
+    if (!agent) {
+      res.status(404).json({ 
+        success: false, 
+        error: `Agent not found: ${agentId}` 
+      });
+      return;
+    }
+    
+    const baseUrl = extractBaseUrl(agent.endpoint);
+    const url = `${baseUrl}/asterism/config`;
     
     try {
-      logger.info('Proxying GET /asterism/config', { requestId, details: { url } });
+      logger.info('Proxying GET /asterism/config', { requestId, details: { agentId, endpoint: agent.endpoint, baseUrl, url } });
       
       const response = await fetchWithTimeout(url);
       
@@ -94,6 +124,7 @@ export const asterismController = {
         requestId, 
         error,
         details: { 
+          agentId,
           url,
           errorCode: (error as FetchError).code,
           cause: (error as FetchError).cause?.message,
@@ -109,21 +140,41 @@ export const asterismController = {
 
   async updateConfig(req: Request, res: Response): Promise<void> {
     const requestId = (req as any).requestId;
-    const url = `${ASTERISM_BASE_URL}/asterism/config`;
+    const agentId = req.query.agentId as string;
     const { key, value } = req.body as ConfigUpdateBody;
     
-    if (!key || value === undefined) {
+    if (!agentId) {
       res.status(400).json({ 
         success: false, 
-        error: 'Missing required fields: key and value are required' 
+        error: 'Missing required query parameter: agentId' 
       });
       return;
     }
     
+    if (!key || value === undefined) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Missing required body fields: key and value are required' 
+      });
+      return;
+    }
+    
+    const agent = await agentsService.findById(agentId);
+    if (!agent) {
+      res.status(404).json({ 
+        success: false, 
+        error: `Agent not found: ${agentId}` 
+      });
+      return;
+    }
+    
+    const baseUrl = extractBaseUrl(agent.endpoint);
+    const url = `${baseUrl}/asterism/config`;
+    
     try {
       logger.info('Proxying PUT /asterism/config', { 
         requestId, 
-        details: { key, value, url } 
+        details: { agentId, key, endpoint: agent.endpoint, baseUrl, url } 
       });
       
       const response = await fetchWithTimeout(url, {
@@ -155,6 +206,7 @@ export const asterismController = {
         requestId, 
         error,
         details: { 
+          agentId,
           url,
           key,
           errorCode: (error as FetchError).code,

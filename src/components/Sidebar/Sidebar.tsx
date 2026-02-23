@@ -19,6 +19,7 @@ export function Sidebar({ onAddAgent, onEditAgent, onDeleteAgent }: SidebarProps
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
 
   const handleCreateGroup = async (name: string, agentIds: string[]) => {
@@ -72,7 +73,10 @@ export function Sidebar({ onAddAgent, onEditAgent, onDeleteAgent }: SidebarProps
                 onClick={() => onEditAgent(agent.id)}
                 onDelete={() => onDeleteAgent(agent.id)}
                 onChat={() => handleAgentChat(agent.id)}
-                onConfig={() => setIsConfigModalOpen(true)}
+                onConfig={(agentId) => {
+                  setConfigAgentId(agentId);
+                  setIsConfigModalOpen(true);
+                }}
               />
             ))
           )}
@@ -148,7 +152,11 @@ export function Sidebar({ onAddAgent, onEditAgent, onDeleteAgent }: SidebarProps
       {/* Config Modal */}
       <ConfigModal
         isOpen={isConfigModalOpen}
-        onClose={() => setIsConfigModalOpen(false)}
+        onClose={() => {
+          setIsConfigModalOpen(false);
+          setConfigAgentId(null);
+        }}
+        agentId={configAgentId}
       />
     </aside>
   );

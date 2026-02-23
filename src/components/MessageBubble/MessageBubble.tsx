@@ -77,7 +77,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   // Format usage stats for display
   const formatUsage = (usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }) => {
     if (!usage) return null;
-    return `💰 ${usage.prompt_tokens} → ${usage.completion_tokens} (${usage.total_tokens} total)`;
+    return `${usage.prompt_tokens} → ${usage.completion_tokens} (${usage.total_tokens} total)`;
   };
 
   return (

@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Node (both frontend and backend)
+node_modules
+server/node_modules
+npm-debug.log*
+
+# Build output (both frontend and backend)
+dist
+dist-ssr
+server/dist
+
+# Prisma (regenerated in container via db:generate)
+prisma
+server/prisma
+
+# Environment files
+.env
+.env.local
+.env.*.local
+server/.env
+server/.env.local
+
+# Logs
+logs
+*.log
+
+# Editor
+.vscode
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Misc
+*.local
+PLAN.md
+AGENTS.md
+blueprint.md
+README.md

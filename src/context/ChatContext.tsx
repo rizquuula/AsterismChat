@@ -48,8 +48,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = React.useState(false);
   
-  // Initialize sessionId
-  const initialSessionId = generateUUID();
+  // Initialize sessionId once using useState with initializer function
+  const [initialSessionId] = React.useState(() => generateUUID());
   
   // Start with initial state, will be replaced with backend data
   const [state, dispatch] = useReducer(chatReducer, { ...initialState, sessionId: initialSessionId });

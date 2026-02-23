@@ -142,3 +142,19 @@ export interface AsterismConfig {
   models: AsterismModelsConfig;
   mcp: AsterismMcpConfig;
 }
+
+export type ConfigAction = 'set' | 'append' | 'remove';
+
+export interface JsonSchema {
+  type?: string;
+  properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+  required?: string[];
+  description?: string;
+  default?: unknown;
+  anyOf?: JsonSchema[];
+  $ref?: string;
+  title?: string;
+  enum?: string[];
+  $defs?: Record<string, JsonSchema>;
+}

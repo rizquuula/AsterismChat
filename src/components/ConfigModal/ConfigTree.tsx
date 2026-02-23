@@ -1,18 +1,50 @@
 import React, { useState } from 'react';
 import { updateAsterismConfig } from '../../services/api';
+import { JsonSchema } from '../../types';
+import { AddItemModal } from './AddItemModal';
 
 interface ConfigTreeProps {
   data: unknown;
   path: string;
   agentId: string;
+  schema: JsonSchema | null;
   onUpdate: () => void;
 }
 
-export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
+function resolveRef(ref: string, defs: Record<string, JsonSchema> | undefined): JsonSchema | null {
+  if (!defs) return null;
+  const refName = ref.replace('#/$defs/', '');
+  return defs[refName] || null;
+}
+
+function getSchemaForPath(schema: JsonSchema | null, path: string): JsonSchema | null {
+  if (!schema || !path) return schema;
+  
+  const parts = path.split('.').filter(p => !p.match(/^\[\d+\]$/));
+  let current: JsonSchema | undefined = schema;
+  
+  for (const part of parts) {
+    if (!current?.properties) return current ?? null;
+    current = current.properties[part];
+    
+    if (current?.$ref) {
+      current = resolveRef(current.$ref, schema.$defs) ?? undefined;
+    }
+  }
+  
+  return current ?? null;
+}
+
+export function ConfigTree({ data, path, agentId, schema, onUpdate }: ConfigTreeProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editValue, setEditValue] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const currentSchema = getSchemaForPath(schema, path);
+  const isRequired = schema?.required?.includes(path.split('.').pop() || '') ?? false;
 
   const handleToggle = () => setIsExpanded(!isExpanded);
 
@@ -34,7 +66,7 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
         parsedValue = Number(editValue);
       }
       
-      const result = await updateAsterismConfig(agentId, path, parsedValue);
+      const result = await updateAsterismConfig(agentId, path, parsedValue, 'set');
       if (result.success) {
         onUpdate();
       } else {
@@ -61,6 +93,23 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
     }
   };
 
+  const handleRemoveItem = async (item: unknown, _index: number) => {
+    setIsSaving(true);
+    try {
+      const result = await updateAsterismConfig(agentId, path, item, 'remove');
+      if (result.success) {
+        onUpdate();
+      } else {
+        console.error('Failed to remove item:', result.error);
+      }
+    } catch (err) {
+      console.error('Error removing item:', err);
+    } finally {
+      setIsSaving(false);
+      setConfirmDelete(null);
+    }
+  };
+
   if (data === null || data === undefined) {
     return null;
   }
@@ -68,20 +117,35 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
   if (Array.isArray(data)) {
     return (
       <div className="space-y-2">
-        <button
-          onClick={handleToggle}
-          className="flex items-center gap-2 text-[14px] font-medium text-[var(--text-primary)]"
-        >
-          <svg
-            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="flex items-center justify-between">
+          <button
+            onClick={handleToggle}
+            className="flex items-center gap-2 text-[14px] font-medium text-[var(--text-primary)]"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <span>{path.split('.').pop()} [{data.length} items]</span>
-        </button>
+            <svg
+              className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span>{path.split('.').pop()} [{data.length} items]</span>
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1 px-2 py-1 text-[12px] text-[var(--accent-success)] hover:bg-[var(--accent-success)]/10 rounded transition-colors"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add
+          </button>
+        </div>
+        
+        {currentSchema?.description && (
+          <p className="text-[11px] text-[var(--text-tertiary)] ml-6 -mt-1">{currentSchema.description}</p>
+        )}
         
         {isExpanded && (
           <div className="ml-4 space-y-2 border-l-2 border-[var(--border)] pl-3">
@@ -92,10 +156,33 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
                 index={index}
                 parentPath={`${path}[${index}]`}
                 agentId={agentId}
+                schema={schema}
                 onUpdate={onUpdate}
+                confirmDelete={confirmDelete}
+                setConfirmDelete={setConfirmDelete}
+                onRemove={handleRemoveItem}
+                isSaving={isSaving}
               />
             ))}
           </div>
+        )}
+        
+        {showAddModal && currentSchema?.items && (
+          <AddItemModal
+            isOpen={showAddModal}
+            onClose={() => setShowAddModal(false)}
+            onAdd={async (newItem: unknown) => {
+              const result = await updateAsterismConfig(agentId, path, newItem, 'append');
+              if (result.success) {
+                onUpdate();
+                setShowAddModal(false);
+              } else {
+                console.error('Failed to add item:', result.error);
+              }
+            }}
+            schema={currentSchema.items!}
+            rootSchema={schema!}
+          />
         )}
       </div>
     );
@@ -103,6 +190,7 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
 
   if (typeof data === 'object') {
     const entries = Object.entries(data as Record<string, unknown>);
+    const fieldName = path.split('.').pop() || '';
     
     return (
       <div className="space-y-2">
@@ -118,8 +206,15 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <span className="uppercase tracking-wide">{path.split('.').pop()}</span>
+          <span className="uppercase tracking-wide">
+            {fieldName}
+            {isRequired && <span className="text-[var(--accent-error)] ml-1">*</span>}
+          </span>
         </button>
+        
+        {currentSchema?.description && (
+          <p className="text-[11px] text-[var(--text-tertiary)] ml-6 -mt-1">{currentSchema.description}</p>
+        )}
         
         {isExpanded && (
           <div className="ml-4 space-y-2 border-l-2 border-[var(--border)] pl-3">
@@ -129,6 +224,7 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
                 data={value}
                 path={path ? `${path}.${key}` : key}
                 agentId={agentId}
+                schema={schema}
                 onUpdate={onUpdate}
               />
             ))}
@@ -145,7 +241,8 @@ export function ConfigTree({ data, path, agentId, onUpdate }: ConfigTreeProps) {
     <div className="flex items-center justify-between py-1 px-2 rounded-lg hover:bg-[var(--bg-tertiary)] group">
       <div className="flex items-center gap-3">
         <span className="text-[13px] text-[var(--text-secondary)] font-mono">
-          {path.split('.').pop()}:
+          {path.split('.').pop()}
+          {isRequired && <span className="text-[var(--accent-error)]">*</span>}:
         </span>
         
         {isEditing ? (
@@ -205,32 +302,78 @@ interface ArrayItemCardProps {
   index: number;
   parentPath: string;
   agentId: string;
+  schema: JsonSchema | null;
   onUpdate: () => void;
+  confirmDelete: number | null;
+  setConfirmDelete: (index: number | null) => void;
+  onRemove: (item: unknown, index: number) => void;
+  isSaving: boolean;
 }
 
-function ArrayItemCard({ item, index, parentPath, agentId, onUpdate }: ArrayItemCardProps) {
+function ArrayItemCard({ 
+  item, 
+  index, 
+  parentPath, 
+  agentId, 
+  schema, 
+  onUpdate,
+  confirmDelete,
+  setConfirmDelete,
+  onRemove,
+  isSaving,
+}: ArrayItemCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   if (typeof item === 'object' && item !== null) {
     return (
       <div className="bg-[var(--bg-tertiary)] rounded-lg overflow-hidden">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
-        >
-          <svg
-            className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="flex items-center justify-between px-3 py-2">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors flex-1"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <span className="text-[var(--text-secondary)]">[{index}]</span>
-          {typeof item === 'object' && item !== null && 'name' in item && (
-            <span className="text-[var(--accent-primary)]">{(item as Record<string, unknown>).name as string}</span>
+            <svg
+              className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="text-[var(--text-secondary)]">[{index}]</span>
+            {typeof item === 'object' && item !== null && 'name' in item && (
+              <span className="text-[var(--accent-primary)]">{(item as Record<string, unknown>).name as string}</span>
+            )}
+          </button>
+          {confirmDelete === index ? (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] text-[var(--text-secondary)] mr-1">Confirm?</span>
+              <button
+                onClick={() => onRemove(item, index)}
+                disabled={isSaving}
+                className="px-2 py-1 text-[11px] text-[var(--accent-error)] hover:bg-[var(--accent-error)]/20 rounded"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded"
+              >
+                No
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(index)}
+              className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent-error)] opacity-0 group-hover:opacity-100 transition-all"
+              title="Remove item"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           )}
-        </button>
+        </div>
         
         {isExpanded && (
           <div className="px-3 pb-3 border-t border-[var(--border)]">
@@ -240,6 +383,7 @@ function ArrayItemCard({ item, index, parentPath, agentId, onUpdate }: ArrayItem
                 data={value}
                 path={`${parentPath}.${key}`}
                 agentId={agentId}
+                schema={schema}
                 onUpdate={onUpdate}
               />
             ))}
@@ -250,9 +394,39 @@ function ArrayItemCard({ item, index, parentPath, agentId, onUpdate }: ArrayItem
   }
 
   return (
-    <div className="flex items-center gap-2 py-1 px-2 bg-[var(--bg-tertiary)] rounded">
-      <span className="text-[12px] text-[var(--text-tertiary)]">[{index}]</span>
-      <span className="text-[13px] text-[var(--text-primary)] font-mono">{String(item)}</span>
+    <div className="flex items-center justify-between py-1 px-2 bg-[var(--bg-tertiary)] rounded group">
+      <div className="flex items-center gap-2">
+        <span className="text-[12px] text-[var(--text-tertiary)]">[{index}]</span>
+        <span className="text-[13px] text-[var(--text-primary)] font-mono">{String(item)}</span>
+      </div>
+      {confirmDelete === index ? (
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] text-[var(--text-secondary)] mr-1">Confirm?</span>
+          <button
+            onClick={() => onRemove(item, index)}
+            disabled={isSaving}
+            className="px-2 py-1 text-[11px] text-[var(--accent-error)] hover:bg-[var(--accent-error)]/20 rounded"
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => setConfirmDelete(null)}
+            className="px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded"
+          >
+            No
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmDelete(index)}
+          className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent-error)] opacity-0 group-hover:opacity-100 transition-all"
+          title="Remove item"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

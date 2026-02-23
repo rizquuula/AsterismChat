@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
-import { AsterismConfig } from '../../types';
-import { getAsterismConfig } from '../../services/api';
+import { AsterismConfig, JsonSchema } from '../../types';
+import { getAsterismConfig, getAsterismConfigSchema } from '../../services/api';
 import { ConfigTree } from './ConfigTree';
 
 interface ConfigModalProps {
@@ -13,6 +13,7 @@ interface ConfigModalProps {
 
 export function ConfigModal({ isOpen, onClose, agentId }: ConfigModalProps) {
   const [config, setConfig] = useState<AsterismConfig | null>(null);
+  const [schema, setSchema] = useState<JsonSchema | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
@@ -26,13 +27,19 @@ export function ConfigModal({ isOpen, onClose, agentId }: ConfigModalProps) {
     setIsLoading(true);
     setError(null);
     
-    const result = await getAsterismConfig(agentId);
+    const [configResult, schemaResult] = await Promise.all([
+      getAsterismConfig(agentId),
+      getAsterismConfigSchema(agentId),
+    ]);
     
     if (isMountedRef.current) {
-      if (result.success && result.data) {
-        setConfig(result.data);
+      if (configResult.success && configResult.data) {
+        setConfig(configResult.data);
+        if (schemaResult.success && schemaResult.data) {
+          setSchema(schemaResult.data);
+        }
       } else {
-        setError(result.error || 'Failed to load config');
+        setError(configResult.error || 'Failed to load config');
       }
       setIsLoading(false);
     }
@@ -63,6 +70,7 @@ export function ConfigModal({ isOpen, onClose, agentId }: ConfigModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       title="Asterism Config"
+      size="fullscreen"
     >
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -94,11 +102,12 @@ export function ConfigModal({ isOpen, onClose, agentId }: ConfigModalProps) {
             <div className="w-6 h-6 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : config && agentId ? (
-          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+          <div className="h-full overflow-y-auto space-y-3 pr-1">
             <ConfigTree
               data={config}
               path=""
               agentId={agentId}
+              schema={schema}
               onUpdate={handleSave}
             />
           </div>

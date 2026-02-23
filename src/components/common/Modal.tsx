@@ -5,9 +5,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  size?: 'default' | 'fullscreen';
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'default' }: ModalProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -39,7 +40,11 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       
       {/* Modal */}
       <div
-        className="relative z-10 w-full max-w-md mx-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl animate-fade-in-up"
+        className={`relative z-10 w-full mx-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl animate-fade-in-up ${
+          size === 'fullscreen' 
+            ? 'max-w-[95vw] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col' 
+            : 'max-w-md'
+        }`}
         style={{ animation: 'fadeInUp 200ms ease-out' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -57,7 +62,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         </div>
         
         {/* Content */}
-        <div className="p-6">
+        <div className={`p-6 ${size === 'fullscreen' ? 'flex-1 overflow-y-auto' : ''}`}>
           {children}
         </div>
       </div>

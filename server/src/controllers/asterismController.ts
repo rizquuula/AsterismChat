@@ -7,6 +7,7 @@ const FETCH_TIMEOUT_MS = 5000;
 interface ConfigUpdateBody {
   key: string;
   value: unknown;
+  action?: 'set' | 'append' | 'remove';
 }
 
 interface FetchError extends Error {
@@ -138,10 +139,76 @@ export const asterismController = {
     }
   },
 
+  async getConfigSchema(req: Request, res: Response): Promise<void> {
+    const requestId = (req as any).requestId;
+    const agentId = req.query.agentId as string;
+    
+    if (!agentId) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Missing required query parameter: agentId' 
+      });
+      return;
+    }
+    
+    const agent = await agentsService.findById(agentId);
+    if (!agent) {
+      res.status(404).json({ 
+        success: false, 
+        error: `Agent not found: ${agentId}` 
+      });
+      return;
+    }
+    
+    const baseUrl = extractBaseUrl(agent.endpoint);
+    const url = `${baseUrl}/asterism/config/schema`;
+    
+    try {
+      logger.info('Proxying GET /asterism/config/schema', { requestId, details: { agentId, endpoint: agent.endpoint, baseUrl, url } });
+      
+      const response = await fetchWithTimeout(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('Asterism config schema fetch failed', { 
+          requestId, 
+          details: { status: response.status, errorText, url },
+        });
+        res.status(response.status).json({ 
+          success: false, 
+          error: `Failed to fetch config schema: ${response.statusText}` 
+        });
+        return;
+      }
+      
+      const data = await response.json();
+      res.json({ success: true, data });
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      const verboseMessage = buildVerboseErrorMessage(url, error);
+      
+      logger.error('Error proxying to asterism schema', { 
+        requestId, 
+        error,
+        details: { 
+          agentId,
+          url,
+          errorCode: (error as FetchError).code,
+          cause: (error as FetchError).cause?.message,
+        },
+      });
+      
+      res.status(500).json({ 
+        success: false, 
+        error: verboseMessage 
+      });
+    }
+  },
+
   async updateConfig(req: Request, res: Response): Promise<void> {
     const requestId = (req as any).requestId;
     const agentId = req.query.agentId as string;
-    const { key, value } = req.body as ConfigUpdateBody;
+    const { key, value, action = 'set' } = req.body as ConfigUpdateBody;
     
     if (!agentId) {
       res.status(400).json({ 
@@ -155,6 +222,14 @@ export const asterismController = {
       res.status(400).json({ 
         success: false, 
         error: 'Missing required body fields: key and value are required' 
+      });
+      return;
+    }
+    
+    if (!['set', 'append', 'remove'].includes(action)) {
+      res.status(400).json({ 
+        success: false, 
+        error: `Invalid action: ${action}. Must be one of: set, append, remove` 
       });
       return;
     }
@@ -180,14 +255,14 @@ export const asterismController = {
       const response = await fetchWithTimeout(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value }),
+        body: JSON.stringify({ key, value, action }),
       });
       
       if (!response.ok) {
         const errorText = await response.text();
         logger.error('Asterism config update failed', { 
           requestId, 
-          details: { status: response.status, errorText, key, url },
+          details: { status: response.status, errorText, key, action, url },
         });
         res.status(response.status).json({ 
           success: false, 

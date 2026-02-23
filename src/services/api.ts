@@ -1,4 +1,4 @@
-import { Agent, Group, Message, ChatState, Usage, AsterismConfig } from '../types';
+import { Agent, Group, Message, ChatState, Usage, AsterismConfig, ConfigAction, JsonSchema } from '../types';
 
 const API_BASE_URL = import.meta.env.MODE === 'production' ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3001');
 
@@ -207,10 +207,15 @@ export async function getAsterismConfig(agentId: string): Promise<ApiResponse<As
 export async function updateAsterismConfig(
   agentId: string,
   key: string,
-  value: unknown
+  value: unknown,
+  action: ConfigAction = 'set'
 ): Promise<ApiResponse<unknown>> {
   return fetchApi<unknown>(`/api/v1/asterism/config?agentId=${encodeURIComponent(agentId)}`, {
     method: 'PUT',
-    body: JSON.stringify({ key, value }),
+    body: JSON.stringify({ key, value, action }),
   });
+}
+
+export async function getAsterismConfigSchema(agentId: string): Promise<ApiResponse<JsonSchema>> {
+  return fetchApi<JsonSchema>(`/api/v1/asterism/config/schema?agentId=${encodeURIComponent(agentId)}`);
 }

@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile
     container_name: asterism_chat_server
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -30,6 +32,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - asterism-network
 
@@ -51,8 +59,10 @@ services:
     volumes:
       - ./nginx/proxy.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - server
-      - web
+      server:
+        condition: service_healthy
+      web:
+        condition: service_started
     networks:
       - asterism-network
 

@@ -59,6 +59,18 @@ export async function getSessionsByGroup(
   return fetchApi<{ sessionId: string; createdAt: number }[]>(`/api/v1/session/group/${groupId}`);
 }
 
+export async function getLatestSession(): Promise<ApiResponse<{
+  group: Group;
+  sessionId: string;
+  messages: Message[];
+} | null>> {
+  return fetchApi<{
+    group: Group;
+    sessionId: string;
+    messages: Message[];
+  } | null>('/api/v1/session/latest');
+}
+
 // Agents API
 export async function getAgents(): Promise<ApiResponse<Agent[]>> {
   return fetchApi<Agent[]>('/api/v1/agents');

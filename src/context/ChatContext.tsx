@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
-import { ChatState, Agent, Message, Group } from '../types';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import { ChatState, Agent, Message, Group, ChatAction } from '../types';
 import { generateUUID } from '../hooks/useLocalStorage';
 import { chatReducer, initialState } from './chatReducer';
 import {
@@ -17,11 +17,11 @@ import {
 } from './chatActions';
 import { callAgentApi } from './chatApi';
 import { createChatService } from './services/chatService';
-import { getAgents, getGroups, getMessages, checkHealth, createSession } from '../services/api';
+import { getAgents, getGroups, checkHealth, getLatestSession } from '../services/api';
 
 interface ChatContextType {
   state: ChatState;
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<ChatAction>;
   addAgent: (agent: Omit<Agent, 'id' | 'createdAt'>) => void;
   updateAgent: (agent: Agent) => void;
   deleteAgent: (id: string) => void;
@@ -48,46 +48,60 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = React.useState(false);
   
-  // Initialize sessionId once using useState with initializer function
-  const [initialSessionId] = React.useState(() => generateUUID());
-  
-  // Start with initial state, will be replaced with backend data
-  const [state, dispatch] = useReducer(chatReducer, { ...initialState, sessionId: initialSessionId });
+  const [state, dispatch] = useReducer(chatReducer, initialState);
 
-  // Load state from backend on mount
   useEffect(() => {
     async function loadInitialState() {
       const healthOk = await checkHealth();
       setIsBackendAvailable(healthOk);
 
       if (healthOk) {
-        // Load individual endpoints in parallel
-        const [agentsRes, groupsRes] = await Promise.all([
+        const [agentsRes, groupsRes, latestSessionRes] = await Promise.all([
           getAgents(),
           getGroups(),
+          getLatestSession(),
         ]);
 
         const agents = agentsRes.success && agentsRes.data ? agentsRes.data : [];
         const groups = groupsRes.success && groupsRes.data ? groupsRes.data : [];
 
-        // Preserve the local sessionId to maintain session continuity across refreshes
-        dispatch({ 
-          type: 'LOAD_STATE', 
-          payload: {
-            agents,
-            groups,
-            messages: [],
-            activeGroupId: null,
-            sessionId: initialSessionId,
-          }
-        });
+        if (latestSessionRes.success && latestSessionRes.data) {
+          const { group, sessionId, messages } = latestSessionRes.data;
+          
+          const existingGroup = groups.find(g => g.id === group.id);
+          const mergedGroups = existingGroup 
+            ? groups 
+            : [...groups, group];
+          
+          dispatch({ 
+            type: 'LOAD_STATE', 
+            payload: {
+              agents,
+              groups: mergedGroups,
+              messages,
+              activeGroupId: group.id,
+              sessionId,
+            }
+          });
+        } else {
+          dispatch({ 
+            type: 'LOAD_STATE', 
+            payload: {
+              agents,
+              groups,
+              messages: [],
+              activeGroupId: null,
+              sessionId: generateUUID(),
+            }
+          });
+        }
       }
       
       setIsLoading(false);
     }
 
     loadInitialState();
-  }, [initialSessionId]);
+  }, []);
 
   // Create action creators with dependencies
   const addAgent = useCallback(createAddAgent(dispatch), [dispatch]);

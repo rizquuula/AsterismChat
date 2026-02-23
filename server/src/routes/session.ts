@@ -5,6 +5,83 @@ import logger from '../utils/logger';
 const router = Router();
 
 /**
+ * GET /session/latest - Get the most recent session with its group and messages
+ * Returns the latest session context for stateless client initialization
+ */
+router.get('/latest', async (req, res) => {
+  const requestId = (req as any).requestId;
+
+  try {
+    logger.debug('Fetching latest session', { requestId, operation: 'getLatestSession' });
+
+    const latestGroupSession = await prisma.groupSession.findFirst({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        group: {
+          include: {
+            agents: {
+              include: {
+                agent: true,
+              },
+            },
+          },
+        },
+        session: true,
+      },
+    });
+
+    if (!latestGroupSession) {
+      logger.info('No sessions found', { requestId, operation: 'getLatestSession' });
+      return res.json({ success: true, data: null });
+    }
+
+    const messages = await prisma.message.findMany({
+      where: { sessionId: latestGroupSession.sessionId },
+      orderBy: { timestamp: 'asc' },
+    });
+
+    const agentIds = latestGroupSession.group.agents.map(ga => ga.agentId);
+
+    const result = {
+      group: {
+        id: latestGroupSession.group.id,
+        name: latestGroupSession.group.name,
+        createdAt: Number(latestGroupSession.group.createdAt),
+        agentIds,
+      },
+      sessionId: latestGroupSession.sessionId,
+      messages: messages.map(msg => ({
+        id: msg.id,
+        sessionId: msg.sessionId,
+        content: msg.content,
+        sender: msg.sender,
+        senderName: msg.senderName,
+        timestamp: Number(msg.timestamp),
+        status: msg.status,
+        targets: msg.targets,
+        error: msg.error,
+        usage: msg.usage,
+      })),
+    };
+
+    logger.info('Latest session fetched', {
+      requestId,
+      operation: 'getLatestSession',
+      details: { groupId: result.group.id, sessionId: result.sessionId, messageCount: result.messages.length },
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    logger.error('Failed to fetch latest session', {
+      requestId,
+      operation: 'getLatestSession',
+      error: error as Error,
+    });
+    res.status(500).json({ success: false, error: 'Failed to fetch latest session' });
+  }
+});
+
+/**
  * POST /session - Create or get a session
  */
 router.post('/', async (req, res) => {

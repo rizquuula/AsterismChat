@@ -9,6 +9,7 @@ import agentsRouter from './routes/agents';
 import groupsRouter from './routes/groups';
 import messagesRouter from './routes/messages';
 import sessionRouter from './routes/session';
+import asterismRouter from './routes/asterism';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use('/api/v1/agents', agentsRouter);
 app.use('/api/v1/groups', groupsRouter);
 app.use('/api/v1/messages', messagesRouter);
 app.use('/api/v1/session', sessionRouter);
+app.use('/api/v1/asterism', asterismRouter);
 
 // Health check
 app.get('/health', (req, res) => {

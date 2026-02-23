@@ -104,3 +104,41 @@ export type ChatAction =
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SET_SESSION_ID'; payload: string }
   | { type: 'LOAD_STATE'; payload: ChatState };
+
+export interface AsterismAgentInfo {
+  name: string;
+  version: string;
+  description: string;
+}
+
+export interface AsterismApiConfig {
+  host: string;
+  port: number;
+  debug: boolean;
+  cors_origins: string[];
+}
+
+export interface AsterismModelProvider {
+  type: string;
+  name: string;
+  base_url: string;
+  api_key: string;
+}
+
+export interface AsterismModelsConfig {
+  provider: AsterismModelProvider[];
+  default: string;
+  fallback: string[];
+}
+
+export interface AsterismMcpConfig {
+  servers_file: string;
+  timeout: number;
+}
+
+export interface AsterismConfig {
+  agent: AsterismAgentInfo;
+  api: AsterismApiConfig;
+  models: AsterismModelsConfig;
+  mcp: AsterismMcpConfig;
+}

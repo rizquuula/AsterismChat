@@ -156,7 +156,7 @@ export const agentsService = {
 
         logger.debug('Agent API call successful', {
           operation: 'callAgent',
-          details: { agentId, sessionId, attempt },
+          details: { agentId, sessionId, attempt, endpoint: agent.endpoint },
         });
 
         return { content, usage };
@@ -182,7 +182,7 @@ export const agentsService = {
         if (attempt < maxRetries) {
           logger.warn('Agent API call failed, retrying', {
             operation: 'callAgent',
-            details: { agentId, sessionId, attempt, maxRetries, error: lastError.message },
+            details: { agentId, sessionId, attempt, maxRetries, error: lastError.message, endpoint: agent.endpoint },
           });
           // Exponential backoff
           await sleep(retryDelay * Math.pow(2, attempt));

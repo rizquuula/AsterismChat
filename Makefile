@@ -1,4 +1,4 @@
-.PHONY: install build dev dev-fe dev-be preview lint clean help migrate ngrok deploy deploy-down
+.PHONY: install build dev dev-fe dev-be preview lint clean help migrate ngrok deploy deploy-down healthcheck
 
 # Default target
 help:
@@ -13,8 +13,9 @@ help:
 	@echo "  make clean     - Remove build artifacts"
 	@echo "  make migrate   - Push Prisma schema to database (preserves data)"
 	@echo "  make ngrok     - Start ngrok tunnel to localhost:3000"
-	@echo "  make deploy    - Build and start production containers (Docker Compose)"
-	@echo "  make deploy-down - Stop production containers"
+	@echo "  make deploy       - Build and start production containers (Docker Compose)"
+	@echo "  make deploy-down  - Stop production containers"
+	@echo "  make healthcheck  - Check server health via nginx"
 
 install:
 	npm install
@@ -53,9 +54,13 @@ ngrok:
 
 deploy:
 	@echo "Building and starting production containers..."
-	docker compose up --build -d
+	docker compose up --build --force-recreate -d
 	@echo "Production deployment ready at http://localhost:3000"
 
 deploy-down:
 	@echo "Stopping production containers..."
 	docker compose down
+
+healthcheck:
+	@echo "Checking server health..."
+	@curl -f http://localhost:3000/health && echo " OK" || echo " FAILED"

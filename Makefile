@@ -12,7 +12,7 @@ help:
 	@echo "  make lint      - Run ESLint"
 	@echo "  make clean     - Remove build artifacts"
 	@echo "  make migrate   - Push Prisma schema to database (preserves data)"
-	@echo "  make ngrok     - Start ngrok tunnel to localhost:5173"
+	@echo "  make ngrok     - Start ngrok tunnel to localhost:3000"
 	@echo "  make deploy    - Build and start production containers (Docker Compose)"
 	@echo "  make deploy-down - Stop production containers"
 
@@ -49,7 +49,7 @@ migrate:
 	cd server && npm run db:push
 
 ngrok:
-	ngrok http 5173
+	ngrok http 3000
 
 deploy:
 	@echo "Building and starting production containers..."

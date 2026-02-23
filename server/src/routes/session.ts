@@ -17,6 +17,12 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'groupId is required' });
     }
 
+    const group = await prisma.group.findUnique({ where: { id: groupId } });
+    if (!group) {
+      logger.warn('Group not found', { requestId, operation: 'createSession', details: { groupId } });
+      return res.status(404).json({ success: false, error: 'Group not found' });
+    }
+
     logger.debug('Creating session', {
       requestId,
       operation: 'createSession',
@@ -66,6 +72,54 @@ router.post('/', async (req, res) => {
       error: error as Error,
     });
     res.status(500).json({ success: false, error: 'Failed to create session' });
+  }
+});
+
+/**
+ * GET /session/group/:groupId - Get all sessions for a group, ordered by most recent
+ * NOTE: This route must be defined BEFORE /:sessionId to avoid Express matching "group" as a sessionId
+ */
+router.get('/group/:groupId', async (req, res) => {
+  const requestId = (req as any).requestId;
+  const { groupId } = req.params;
+
+  try {
+    const group = await prisma.group.findUnique({ where: { id: groupId } });
+    if (!group) {
+      logger.warn('Group not found', { requestId, operation: 'getSessionsByGroup', details: { groupId } });
+      return res.status(404).json({ success: false, error: 'Group not found' });
+    }
+
+    logger.debug('Fetching sessions for group', { requestId, operation: 'getSessionsByGroup', details: { groupId } });
+
+    const groupSessions = await prisma.groupSession.findMany({
+      where: { groupId },
+      include: {
+        session: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const sessions = groupSessions.map(gs => ({
+      sessionId: gs.sessionId,
+      createdAt: Number(gs.createdAt),
+    }));
+
+    logger.info('Sessions fetched for group', {
+      requestId,
+      operation: 'getSessionsByGroup',
+      details: { groupId, count: sessions.length },
+    });
+
+    res.json({ success: true, data: sessions });
+  } catch (error) {
+    logger.error('Failed to fetch sessions for group', {
+      requestId,
+      operation: 'getSessionsByGroup',
+      error: error as Error,
+      details: { groupId },
+    });
+    res.status(500).json({ success: false, error: 'Failed to fetch sessions' });
   }
 });
 

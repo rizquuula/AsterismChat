@@ -31,3 +31,4 @@ server/.env.local
 *.sw?
 
 PLAN.md
+AGENTS.md

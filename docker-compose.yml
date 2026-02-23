@@ -7,8 +7,6 @@ services:
       POSTGRES_USER: asterismchat
       POSTGRES_PASSWORD: asterismchat_password
       POSTGRES_DB: asterism_chat_db
-    ports:
-      - "15432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +14,51 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - asterism-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: asterism_chat_server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://asterismchat:asterismchat_password@postgres:5432/asterism_chat_db?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - asterism-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asterism_chat_web
+    restart: unless-stopped
+    networks:
+      - asterism-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: asterism_chat_nginx
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ./nginx/proxy.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - server
+      - web
+    networks:
+      - asterism-network
+
+networks:
+  asterism-network:
+    driver: bridge
 
 volumes:
   postgres_data:

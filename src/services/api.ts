@@ -1,6 +1,6 @@
 import { Agent, Group, Message, ChatState, Usage } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.MODE === 'production' ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3001');
 
 interface ApiResponse<T> {
   success: boolean;
@@ -51,6 +51,12 @@ export async function getSession(
   sessionId: string
 ): Promise<ApiResponse<{ sessionId: string; activeGroupId: string | null }>> {
   return fetchApi<{ sessionId: string; activeGroupId: string | null }>(`/api/v1/session/${sessionId}`);
+}
+
+export async function getSessionsByGroup(
+  groupId: string
+): Promise<ApiResponse<{ sessionId: string; createdAt: number }[]>> {
+  return fetchApi<{ sessionId: string; createdAt: number }[]>(`/api/v1/session/group/${groupId}`);
 }
 
 // Agents API
@@ -118,9 +124,9 @@ export async function deleteGroup(id: string): Promise<ApiResponse<void>> {
 
 // Messages API
 export async function getMessages(
-  groupId?: string
+  sessionId?: string
 ): Promise<ApiResponse<Message[]>> {
-  const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
+  const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
   return fetchApi<Message[]>(`/api/v1/messages${query}`);
 }
 

@@ -38,6 +38,7 @@ interface ChatContextType {
   getActiveGroupMessages: () => Message[];
   isBackendAvailable: boolean;
   isLoading: boolean;
+  isLoadingMessages: boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -45,6 +46,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [isBackendAvailable, setIsBackendAvailable] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = React.useState(false);
   
   // Persist sessionId in localStorage to maintain session across page refreshes
   const [storedSessionId, setStoredSessionId] = useLocalStorage('asterism-session-id', '');
@@ -104,7 +106,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const addGroup = useCallback(createAddGroup(dispatch), [dispatch]);
   const updateGroup = useCallback(createUpdateGroup(dispatch), [dispatch]);
   const deleteGroup = useCallback(createDeleteGroup(dispatch, () => state.groups), [dispatch, state.groups]);
-  const setActiveGroup = useCallback(createSetActiveGroup(dispatch, () => state.groups, () => state.sessionId), [dispatch, state.groups, state.sessionId]);
+  const setActiveGroup = useCallback(createSetActiveGroup(dispatch, () => state.groups, () => state.sessionId, setIsLoadingMessages), [dispatch, state.groups, state.sessionId, setIsLoadingMessages]);
   const addMessage = useCallback(createAddMessage(dispatch), [dispatch]);
   const updateMessage = useCallback(createUpdateMessage(dispatch), [dispatch]);
   const clearMessages = useCallback(createClearMessages(dispatch, () => state.sessionId), [dispatch, state.sessionId]);
@@ -157,6 +159,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         getActiveGroupMessages,
         isBackendAvailable,
         isLoading,
+        isLoadingMessages,
       }}
     >
       {children}

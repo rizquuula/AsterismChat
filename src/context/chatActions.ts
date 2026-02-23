@@ -10,6 +10,8 @@ import {
   createGroup as apiCreateGroup,
   updateGroup as apiUpdateGroup,
   createSession as apiCreateSession,
+  getSessionsByGroup as apiGetSessionsByGroup,
+  getMessages as apiGetMessages,
   createMessage as apiCreateMessage,
   updateMessage as apiUpdateMessage,
   clearMessages as apiClearMessages,
@@ -112,18 +114,59 @@ export function createDeleteGroup(dispatch: Dispatch<ChatAction>, getGroups: () 
   };
 }
 
-export function createSetActiveGroup(dispatch: Dispatch<ChatAction>, getGroups: () => Group[], getSessionId: () => string) {
+export function createSetActiveGroup(dispatch: Dispatch<ChatAction>, getGroups: () => Group[], getSessionId: () => string, setLoadingMessages?: (loading: boolean) => void) {
+  let currentAbortController: AbortController | null = null;
+
   return async (id: string | null) => {
-    const sessionId = getSessionId();
+    // Cancel any in-flight request from previous group switch
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+    currentAbortController = new AbortController();
+
+    const currentSessionId = getSessionId();
     
     dispatch({ type: 'SET_ACTIVE_GROUP', payload: id });
     
-    // Create a new session in the database when switching to a group
     if (id) {
       try {
-        await apiCreateSession(id);
+        const sessionsResponse = await apiGetSessionsByGroup(id);
+        
+        if (sessionsResponse.success && sessionsResponse.data && sessionsResponse.data.length > 0) {
+          const existingSessionId = sessionsResponse.data[0].sessionId;
+          
+          if (existingSessionId !== currentSessionId) {
+            dispatch({ type: 'SET_SESSION_ID', payload: existingSessionId });
+            
+            setLoadingMessages?.(true);
+            
+            try {
+              const messagesResponse = await apiGetMessages(existingSessionId);
+              if (messagesResponse.success && messagesResponse.data) {
+                dispatch({ type: 'CLEAR_MESSAGES' });
+                for (const msg of messagesResponse.data) {
+                  dispatch({ type: 'ADD_MESSAGE', payload: msg });
+                }
+              }
+            } catch (msgError) {
+              console.error('Failed to load messages for existing session:', msgError);
+            } finally {
+              setLoadingMessages?.(false);
+            }
+          }
+        } else {
+          await apiCreateSession(id);
+        }
       } catch (error) {
-        console.error('Failed to create session on server:', error);
+        if ((error as Error).name === 'AbortError') {
+          return;
+        }
+        console.error('Failed to handle session on server:', error);
+        try {
+          await apiCreateSession(id);
+        } catch (fallbackError) {
+          console.error('Failed to create session on server:', fallbackError);
+        }
       }
     }
   };

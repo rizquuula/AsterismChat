@@ -125,9 +125,9 @@ export const agentsService = {
           },
           body: JSON.stringify({
             model: agent.model,
+            session_id: sessionId,
             messages: [
               {
-                session_id: sessionId,
                 role: 'user',
                 content: userMessage,
               },

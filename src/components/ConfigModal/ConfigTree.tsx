@@ -326,7 +326,7 @@ function ArrayItemCard({
 
   if (typeof item === 'object' && item !== null) {
     return (
-      <div className="bg-[var(--bg-tertiary)] rounded-lg overflow-hidden">
+      <div className="bg-[var(--bg-tertiary)] rounded-lg overflow-hidden group">
         <div className="flex items-center justify-between px-3 py-2">
           <button
             onClick={() => setIsExpanded(!isExpanded)}

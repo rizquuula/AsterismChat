@@ -54,7 +54,7 @@ ngrok:
 
 deploy:
 	@echo "Building and starting production containers..."
-	docker compose up --build -d
+	docker compose up --build --force-recreate -d
 	@echo "Production deployment ready at http://localhost:3000"
 
 deploy-down:
